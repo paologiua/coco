@@ -89,3 +89,24 @@ codesign --verify --strict "$APP"
 
 echo "built $APP"
 codesign -dvv "$APP" 2>&1 | grep -E "^(Identifier|Signature|TeamIdentifier)" || true
+
+# 9. Install into /Applications and relaunch, by default.
+#
+#    Coco is always run from /Applications, never from dist/. Two copies is how you
+#    end up staring at a bug you already fixed: the build lands in dist/ while the
+#    thing on screen is whatever was installed last. It is also the only place the
+#    delivered app will ever live, so testing anywhere else tests the wrong bundle.
+if [ "${1:-}" = "--no-install" ]; then
+  echo "skipped install (--no-install) — note that a running Coco is now older than this build"
+  exit 0
+fi
+
+DEST="/Applications/$APP_NAME.app"
+# She saves every minute and on quit, so at worst a minute of decay is lost.
+pkill -x "$APP_NAME" 2>/dev/null && sleep 1 || true
+rm -rf "$DEST"
+# ditto rather than cp -R: it preserves the signature and the bundle's metadata.
+ditto "$APP" "$DEST"
+codesign --verify --strict "$DEST"
+open "$DEST"
+echo "installed and launched $DEST"

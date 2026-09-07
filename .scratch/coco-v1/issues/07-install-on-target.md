@@ -13,7 +13,11 @@ Graduated from the map's fog once [02](02-shipping-adhoc-app.md) established the
 
 1. Transfer by **USB stick, never AirDrop** — AirDrop sets the quarantine flag and forces a Gatekeeper prompt that USB avoids entirely.
 2. Drag `Coco.app` into `/Applications` **in the Finder**, not by `cp` in Terminal.
-3. `xattr -dr com.apple.quarantine /Applications/Coco.app`, then confirm `xattr -l` prints nothing.
+3. `xattr -dr com.apple.quarantine /Applications/Coco.app`, then confirm `xattr -l` prints no
+   `com.apple.quarantine`. It is **not** expected to print nothing: macOS adds
+   `com.apple.provenance` to apps in `/Applications` by itself, it is unrelated to
+   Gatekeeper, and it cannot be removed. Observed on the dev machine on 7 September —
+   worth knowing before it looks like a failure on hers.
 4. Launch. No Dock icon; menubar icon present.
 5. Enable **Launch at login** from Coco's menu; expect the "Background Items Added" notification.
 6. Confirm *Coco* appears in System Settings → General → Login Items & Extensions.
