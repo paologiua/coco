@@ -28,7 +28,9 @@ final class Simulation {
     /// Uncapped decay is what gets tamagotchis uninstalled; freezing time while quit
     /// feels fake.
     static let catchUpCapHours = 12.0
-    static let longAbsenceHours = 24.0
+    /// A greeting that fires every Monday morning stops being a greeting, so this sits
+    /// well clear of an ordinary weekend of not opening the laptop.
+    static let longAbsenceHours = 48.0
 
     /// Energy thresholds for the two sleeps.
     static let deepSleepBelow = 20.0
@@ -39,10 +41,13 @@ final class Simulation {
     /// second, so nothing normal comes close.
     static let notTickingAbove = 2.0 / 60
 
-    /// Petting is worth little each time and is capped per hour: without the cap,
-    /// holding the mouse down maxes Affection in ten seconds and the toy is over.
-    static let petGain = 4.0
-    static let petCapPerHour = 20.0
+    /// Petting has to be able to outrun Affection, which now falls by 33 points an
+    /// hour: a cap below that would make her impossible to keep happy however much
+    /// anyone did. It stays only as a brake on a held-down mouse button — and it bites
+    /// far less than it used to, because a bar that empties in three hours gives you a
+    /// reason to come back whatever you did a minute ago.
+    static let petGain = 8.0
+    static let petCapPerHour = 60.0
 
     var needs: Needs { state.needs }
     var mood: Mood { Mood.derived(from: state.needs) }
@@ -65,16 +70,21 @@ final class Simulation {
 
         let charged = min(elapsed, Self.catchUpCapHours)
         var needs = state.needs
+        // Hunger is a clock and runs whatever happens: those hours without food were
+        // real, and it is the night's share of it that leaves her wanting breakfast.
         needs.hunger -= 100 / Needs.Decay.hungerHours * charged
-        needs.affection -= 100 / Needs.Decay.affectionHours * charged
-        // Energy is the one Need that must know whether the app was actually running.
-        // A closed lid used to be charged as time spent awake — up to the full 12-hour
-        // cap of it — so a night cost her 75 points and she was found flat and asleep
-        // every morning. Hunger and Affection are right to decay across it; being shut
-        // in a closed laptop is not being awake.
+
+        // Affection and Energy are not clocks, and must know whether the app was
+        // actually on screen. A closed lid used to be charged as time spent awake — the
+        // full 12-hour cap of it — so a night cost 75 Energy and she was found flat out
+        // every morning. Affection has the same problem far worse: at three hours to
+        // empty, twelve hours of catch-up is four whole bars, so a night would zero it
+        // every single day no matter what anyone did. She misses you while she is there
+        // with you; time she was not running is time she was not with you at all.
         if elapsed > Self.notTickingAbove {
             needs.energy += 100 / Needs.Decay.energyDeepSleepHours * charged
         } else {
+            needs.affection -= 100 / Needs.Decay.affectionHours * charged
             switch state.sleep {
             case .awake: needs.energy -= 100 / Needs.Decay.energyAwakeHours * charged
             case .nap:   needs.energy += 100 / Needs.Decay.energyNapHours * charged
@@ -86,6 +96,19 @@ final class Simulation {
         state.needs = needs
         state.lastUpdate = now
         updateSleep(now: now)
+    }
+
+    /// Charge the extra cost of being in the air, on top of the ordinary awake drain
+    /// `advance` has already applied for the same seconds. Driven from the tick, which
+    /// is the only thing that knows she is flying; the model itself has no behaviour.
+    ///
+    /// Only while she is awake: the flight to a perch happens with sleep already
+    /// requested, and charging it would fight the recovery that is the point of it.
+    func spendFlightEnergy(seconds: Double) {
+        guard state.sleep == .awake, seconds > 0 else { return }
+        let extra = Needs.Decay.flyingCostMultiplier - 1
+        state.needs.energy -= 100 / Needs.Decay.energyAwakeHours * extra * (seconds / 3600)
+        state.needs.clampAll()
     }
 
     /// The machine has been idle long enough that Coco dozes off.
@@ -129,7 +152,9 @@ final class Simulation {
     func feed() -> ActionOutcome {
         if state.sleep != .awake { return .refused(.asleep) }
         if state.needs.hunger > 85 { return .refused(.notHungry) }
-        state.needs.hunger += 45
+        // One segment of the ten-block bar in the menu: a beakful, not a meal. Feeding
+        // is meant to be something you do repeatedly rather than once a day.
+        state.needs.hunger += 10
         state.needs.clampAll()
         return .done
     }
@@ -137,8 +162,10 @@ final class Simulation {
     func play() -> ActionOutcome {
         if state.sleep != .awake { return .refused(.asleep) }
         if state.needs.energy < 15 { return .refused(.tooTired) }
-        state.needs.affection += 30
-        state.needs.energy -= 10
+        state.needs.affection += 60
+        // The flying she does chasing the hoop is charged separately, as it happens;
+        // this is the effort of the game itself.
+        state.needs.energy -= 20
         state.needs.clampAll()
         return .done
     }

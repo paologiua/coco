@@ -36,7 +36,7 @@ Coco v1 installed and running on the recipient's M3 MacBook (macOS 15 Sequoia), 
 - **No system permissions**: no Accessibility, no Screen Recording.
 - Sprites are **48x48**, rendered at **3x nearest-neighbour**, aligned bottom-centre; facing is **mirrored in code**, never drawn twice. 32x32 was tried and abandoned — the generator cannot draw that coarsely (see [01](issues/01-pixel-art-pipeline.md)).
 - Animation frames are **derived from one base sprite**, not generated as cycles: small hand-edits plus motion in code (a 1px bob for breathing, an eyelid patch for blinking), with genuinely new drawing reserved for the flight wings.
-- Needs are **Hunger, Affection, Energy**, deriving a single **Mood**. Decay is slow (~3 days from full to empty). Coco never sickens and never dies.
+- Needs are **Hunger, Affection, Energy**, deriving a single **Mood**. Coco never sickens and never dies. ~~Decay is slow (~3 days from full to empty).~~ **Superseded on 8 September** by [15](issues/15-balancing-pass.md): the numbers were charted before anything ran, and once she was on screen the dev wanted a far needier bird. Hunger empties in **5 hours** and rises one bar segment per feed; Affection in **3 hours**, and it is the only Need that stops while the app is not on screen. The three-day figure is gone, not adjusted.
 - Coco is **autonomous**: she wanders and flies on her own, prefers screen edges, avoids the cursor, and is draggable.
 - Coco is visible on **all Spaces**; the only hiding is the explicit `Hide Coco` menu item. Over-full-screen visibility is **aspirational, not locked** — set `.canJoinAllApplications`, verify by eye at first build, drop it if it does not hold (see [03](issues/03-floating-panel-behaviour.md)).
 - Coco sleeps when **Energy is low** or the Mac has been **idle ~15 minutes** — never by wall-clock hour.
@@ -63,6 +63,7 @@ Coco v1 installed and running on the recipient's M3 MacBook (macOS 15 Sequoia), 
 
 - [Interactive Feed and Play](issues/12-interactive-actions.md): generated food and edge-on hoop sprites follow the cursor; full Coco refuses Feed visibly, hungry Coco approaches, and Play counts complete crossings of a hoop perpendicular to the screen. Visual acceptance is pending in the installation rehearsal.
 - [Sleeping somewhere, and startling awake](issues/14-sleep-perching.md): fly to a window or Dock edge when eligible, otherwise the screen floor; use a side-on closed-eye pose and startle when the support changes. Geometry remains best-effort pending target-machine rehearsal.
+- [Balancing pass: how the numbers actually feel](issues/15-balancing-pass.md): sleep is now measured in minutes rather than hours, a shut lid rests her instead of tiring her, and Coco is deliberately far needier than charted — Hunger 5 h fed a segment at a time, Affection 3 h and frozen while she is off screen. The reunion greeting, designed in [04](issues/04-domain-model.md) and never wired to anything, exists at last.
 
 ## Not yet specified
 

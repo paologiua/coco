@@ -10,10 +10,23 @@ The bird herself. One instance, always present while the app runs. She is a *com
 
 A quantity that falls on its own with the passage of **real** time and is raised by an **Action**. Coco has exactly three:
 
-- **Hunger** — raised by feeding.
-- **Affection** — raised by playing and by petting.
-- **Energy** — spent by being awake, restored only by sleeping, and the only Need that
-  cares whether the app was actually running.
+The three run on deliberately different clocks, and which clock a Need is on is the
+whole of its character:
+
+- **Hunger** — empties in **5 hours**, raised **one bar segment at a time** by feeding.
+  She picks at food all day the way a bird does; a beakful is not a meal. It is a true
+  clock: it runs whether or not the app is on screen, so any absence past five hours
+  finds her empty.
+- **Affection** — empties in **3 hours**, the fastest thing in the model. Raised by
+  playing (+60) and by petting (+8 a touch, up to 60 an hour). It is **not** a clock:
+  it falls only while the app is actually on screen, because she misses you while she
+  is *with* you. Charged against a shut lid it would read zero every morning whatever
+  anyone did.
+- **Energy** — empties in **8 hours awake**, restored only by sleeping. Also not a
+  clock: time the app was not running is time she was not awake for, so it rests her.
+  Sitting still is the cheap case — **flying costs three times as much**, charged as it
+  happens, so a bird that has spent the afternoon in the air is genuinely tired. Playing
+  costs 20 outright on top of the flying the game itself makes her do.
 
 Needs measure *what Coco lacks attention in*, not what she deserves. A Need at its floor changes how she looks and moves; it never changes whether she is there.
 
@@ -51,7 +64,11 @@ They also **recover at different rates**, which is the lever that decides how of
 
 What happens to Needs across time when the app was not running — the Mac was asleep, or Coco was quit. Decay is charged against real elapsed time but **capped**, so a long absence costs no more than a short one, and a return after a long absence is greeted as a **reunion** rather than a reckoning.
 
-Hunger and Affection decay across it: she really was unfed. **Energy does the opposite** — time the app was not ticking is time Coco was not awake for, whatever the saved state says, so it *rests* her. A closed lid is not a waking hour. Without this, a night was charged as twelve hours awake and she was found flat out every morning, asleep until nearly lunchtime, which is the wrong first thing to see on a machine that was given to you as a present.
+Only **Hunger** decays across it: those hours without food were real. **Affection is frozen** and **Energy is restored** — a closed lid is neither a waking hour nor an hour spent ignoring her. Without the Energy rule a night was charged as twelve hours awake, and she was found flat out every morning, asleep until nearly lunchtime; without the Affection rule the same night would empty a three-hour bar four times over.
+
+The **12-hour cap** now has almost nothing left to do: five hours already empties Hunger, so capping the charge changes no outcome. It survives as the guarantee that a long absence is never worse than a medium one.
+
+A return after **48 hours** is a **reunion**: she greets it with a line in the speech bubble rather than letting it pass. The threshold sits well clear of a weekend of not opening the laptop, because a greeting that fires most Mondays is not a greeting.
 
 ## Birthday
 

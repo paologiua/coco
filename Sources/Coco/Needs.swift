@@ -9,14 +9,26 @@ struct Needs: Codable, Equatable {
 
     static let full = Needs(hunger: 100, affection: 100, energy: 100)
 
-    /// Hours from full to empty. Hunger falls fastest because feeding is the action
-    /// with the most immediate payoff; affection is slowest because it is what rewards
-    /// showing up every day.
+    /// Hours from full to empty.
     enum Decay {
-        static let hungerHours = 48.0
-        static let affectionHours = 72.0
-        /// Energy is spent by being AWAKE, not by the clock.
-        static let energyAwakeHours = 16.0
+        /// Five hours: she picks at food all day the way a bird does, rather than
+        /// sitting down to three meals. Two of the menu's ten bar segments an hour.
+        /// It runs through the night as well, so any absence past five hours — every
+        /// morning included — finds her empty.
+        static let hungerHours = 5.0
+        /// Three hours, and by far the fastest thing in the model: she wants company
+        /// several times a day, not daily. It only runs while the app is actually on
+        /// screen — see `Simulation.advance`. Anything faster than five hours would be
+        /// beyond the reach of the petting cap and so unwinnable by anyone.
+        static let affectionHours = 3.0
+        /// Energy is spent by being AWAKE, not by the clock — a waking day of sitting
+        /// on the desk edge empties her.
+        static let energyAwakeHours = 8.0
+        /// Flying is work, and this is what it costs relative to simply being awake.
+        /// Held as a multiplier rather than a rate so it follows `energyAwakeHours`
+        /// instead of having to be retuned every time that moves. Playing costs on top
+        /// of this by itself: chasing a hoop is almost all flight.
+        static let flyingCostMultiplier = 3.0
         /// Restored only by sleeping, and at two different rates on purpose.
         ///
         /// Real sleep — the collapse from exhaustion, and the nap asked for from the

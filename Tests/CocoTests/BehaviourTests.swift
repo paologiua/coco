@@ -77,7 +77,7 @@ struct BehaviourTests {
         driver.tick(dt: 1.3, now: now.addingTimeInterval(1.3), cursor: hand, screen: screen)
         driver.tick(dt: 0.1, now: now.addingTimeInterval(1.4), cursor: hand, screen: screen)
 
-        #expect(sim.needs.hunger == 95)
+        #expect(sim.needs.hunger == 60)
         #expect(driver.behaviour != .flying)
 
         // The hand has not moved since it fed her, so it is still not a threat: this

@@ -1,7 +1,7 @@
 # 15 — Balancing pass: how the numbers actually feel
 
 Type: grilling
-Status: open
+Status: resolved
 Blocked by: —
 Parent: [map](../map.md)
 
@@ -40,3 +40,36 @@ Five tests added or rewritten — `aClosedLaptopRestsHerRatherThanTiringHer`, `a
 **Deliberately not judged, so this ticket stays open:** Hunger's 48 hours, Affection's 72, Feed +45, Play +30, the +20/hour petting cap, and the 12-hour catch-up / 24-hour reunion rules. None of them can be felt without living with her for days, and there are seven left before the deadline. Current live state after a day of use is Hunger 94 / Affection 99, which suggests they are generous rather than harsh — the failure mode worth having in a gift. Recommendation is to accept them as they stand unless the rehearsal on the target Mac says otherwise.
 
 **Noted, not fixed:** `BehaviourDriver.rest(for:)` schedules against the wall clock while `tick(now:)` takes an injected date. It makes her wandering non-deterministic under test — one assertion here had to park her with `stay(for: 60)` to isolate a startle from a flight she chose herself. Worth threading `now` through if that layer is ever touched again.
+
+## Answer
+
+Worked as a grilling over several rounds on 7–8 September, against the running app rather than against the model on paper. The dev's direction throughout was **a much needier Coco than the map had charted**, and where the arithmetic said a number could not work the objection was put with the numbers and then the dev's call was taken.
+
+**Energy and sleep** (see the comment above): Deep Sleep fills in half an hour so an episode lasts ~12 minutes instead of 3 hours; a Nap fills in four, so a lunch break cannot erase every reason she ever sleeps properly; time the app was not ticking rests her instead of charging it as waking hours; the hand-asked nap ends when its timer says so.
+
+**Hunger — 5 hours, +10 a feed.** One segment of the menu's ten-block bar per feeding: a beakful, not a meal, because she picks at food all day the way a bird does. It stays a true clock and runs through the night, so she is empty every morning and after any absence past five hours.
+
+**Affection — 3 hours, and it is not a clock.** The fastest thing in the model by a factor of nearly two over Hunger. It falls only while the app is on screen: she misses you while she is *with* you. This one was the dev's own idea and it removed a hard blocker — at three hours to empty, twelve hours of catch-up is four whole bars, so charging a night against it would have read zero every morning whatever anyone did. Play +60, petting +8 a touch with the hourly cap raised 20 → 60, because a cap below the decay rate is unwinnable by anyone.
+
+**Mood stays `min(Hunger, Affection)`.** Put to the dev twice with the arithmetic: Affection is much the faster Need, so it is nearly always the minimum, and the icon will mostly report Affection while Hunger goes unseen. The dev chose to keep it. Recorded here as a known, accepted consequence rather than an oversight: **Coco will read sad for a large part of most days**, and the menubar will rarely name Hunger.
+
+**Energy — 8 hours awake, and flying is no longer free.** Halved from 16. More to the
+point, the drain was previously *uniform*: a bird crossing the screen all afternoon cost
+exactly what a bird asleep on the desk edge cost, which is the sort of thing you only
+notice once you watch her. Flight is now charged at **three times** the resting rate as
+it happens, driven from the tick because the model has no notion of behaviour. Play costs
+20 outright, and the hoop game charges its own flying on top, so a play session is
+genuinely tiring. The multiplier is held as a multiplier, not a rate, so it follows
+`energyAwakeHours` instead of needing to be retuned beside it. Flying to a perch with
+sleep already requested is exempt — charging it would fight the recovery the flight
+exists to reach.
+
+**The reunion — 48 hours, and it now exists.** `returnedFromLongAbsence` was computed and tested from the beginning and **never read by any code**: returning after a fortnight looked exactly like never having left. It now queues a line into the same speech bubble the welcome and the birthday use, from `Assets/Text/reunion.txt`, so the feature cost a text file. The threshold moved 24 → 48 hours: at 24 it fired most Monday mornings.
+
+40 tests pass. `CONTEXT.md` rewritten around the idea that *which clock a Need is on* is the whole of its character, and the map's locked "~3 days" constraint struck out rather than adjusted.
+
+### Left open deliberately
+
+The **12-hour catch-up cap is now nearly dead**. Five hours already empties Hunger, Affection is frozen and Energy is restored, so capping the charge changes no outcome any more. It has not been removed — it still guarantees a long absence is never worse than a medium one — but nothing depends on its value.
+
+**Feeding is currently one beakful per menu invocation.** At 5 hours Hunger falls two segments an hour and a feed returns one, so a single feed can never keep up. The obvious next move, offered and not yet taken: leave the food on the cursor for its full 20 seconds so several beakfuls can be given in one session, which makes the dev's own "one segment per feed" rule add up.

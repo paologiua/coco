@@ -17,36 +17,51 @@ struct SimulationTests {
 
     // MARK: - Decay
 
-    @Test func hungerEmptiesInFortyEightHours() {
-        let s = sim()
-        // Stepped, because a single 48-hour jump is charged as 12 by the catch-up cap.
-        for hour in stride(from: 12.0, through: 48.0, by: 12.0) { s.advance(to: hours(hour)) }
-        #expect(s.needs.hunger == 0)
+    @Test func hungerEmptiesInFiveHours() {
+        let half = sim(); half.advance(to: hours(2.5))
+        #expect(abs(half.needs.hunger - 50) < 0.001)
+        let empty = sim(); empty.advance(to: hours(5))
+        #expect(empty.needs.hunger == 0)
     }
 
-    @Test func affectionOutlastsHunger() {
-        let s = sim()
-        for hour in stride(from: 12.0, through: 48.0, by: 12.0) { s.advance(to: hours(hour)) }
-        #expect(s.needs.hunger == 0)
-        #expect(s.needs.affection > 0)
+    @Test func affectionOnlyFallsWhileSheIsOnScreen() {
+        // A shut lid is not time spent ignoring her. At three hours to empty, charging
+        // a night against Affection would leave it at zero every single morning
+        // whatever anyone did, because twelve hours of catch-up is four whole bars.
+        let closed = sim()
+        closed.advance(to: hours(10))
+        #expect(closed.needs.affection == 100)
+        #expect(closed.needs.hunger == 0)      // Hunger is a clock and runs regardless
+
+        // Ticking a minute at a time, it falls faster than anything else in the model.
+        let watching = sim()
+        for minute in 1...60 { watching.advance(to: epoch.addingTimeInterval(Double(minute) * 60)) }
+        #expect(abs(watching.needs.affection - 66.67) < 0.5)
     }
 
     // MARK: - Catch-up
 
-    @Test func threeDaysAwayCostsNoMoreThanTwelveHours() {
+    @Test func aLongAbsenceCostsNoMoreThanAShortOne() {
+        // The 12-hour cap is no longer observable on Hunger: five hours already empties
+        // it, so capping the charge changes nothing. It survives as the guard that
+        // keeps a long absence from being worse than a medium one.
         let away = sim();  away.advance(to: hours(72))
-        let short = sim(); short.advance(to: hours(12))
-        #expect(abs(away.needs.hunger - short.needs.hunger) < 0.001)
+        let short = sim(); short.advance(to: hours(6))
+        #expect(away.needs.hunger == short.needs.hunger)
     }
 
     @Test func longAbsenceIsFlaggedForAReunion() {
-        let s = sim(); s.advance(to: hours(30))
+        let s = sim(); s.advance(to: hours(60))
         #expect(s.returnedFromLongAbsence)
     }
 
     @Test func shortAbsenceIsNotAReunion() {
         let s = sim(); s.advance(to: hours(2))
         #expect(!s.returnedFromLongAbsence)
+        // A weekend of not opening the laptop must not trigger it either, or the
+        // greeting fires most Mondays and stops being a greeting.
+        let weekend = sim(); weekend.advance(to: hours(30))
+        #expect(!weekend.returnedFromLongAbsence)
     }
 
     @Test func backwardsClockChargesNothing() {
@@ -78,7 +93,8 @@ struct SimulationTests {
         let s = sim { $0.needs.hunger = 50 }
         #expect(s.canFeed)
         #expect(s.feed() == .done)
-        #expect(s.needs.hunger == 95)
+        // One segment of the ten-block bar: a beakful, not a meal.
+        #expect(s.needs.hunger == 60)
     }
 
     @Test func playingIsRefusedWhenTooTired() {
@@ -156,6 +172,29 @@ struct SimulationTests {
         let s = sim { $0.sleep = .deep; $0.needs.energy = Simulation.deepSleepBelow }
         for minute in 1...12 { s.advance(to: epoch.addingTimeInterval(Double(minute) * 60)) }
         #expect(s.sleep == .awake)
+    }
+
+    @Test func flyingCostsMoreThanSittingStill() {
+        let flying = sim(); let perched = sim()
+        // Ten minutes, a tenth of a second at a time, as the tick does it.
+        for step in 1...6000 {
+            let at = epoch.addingTimeInterval(Double(step) / 10)
+            flying.advance(to: at);  flying.spendFlightEnergy(seconds: 0.1)
+            perched.advance(to: at)
+        }
+        #expect(flying.needs.energy < perched.needs.energy)
+        // Three times the resting drain, so ten minutes aloft costs about thirty.
+        let restingLoss = 100 - perched.needs.energy
+        let flyingLoss = 100 - flying.needs.energy
+        #expect(abs(flyingLoss - restingLoss * Needs.Decay.flyingCostMultiplier) < 0.01)
+    }
+
+    @Test func sleepingCocoIsNotChargedForFlyingToHerPerch() {
+        // She flies to a window edge with sleep already requested; charging that would
+        // fight the recovery the flight exists to reach.
+        let s = sim { $0.sleep = .deep; $0.needs.energy = 40 }
+        s.spendFlightEnergy(seconds: 600)
+        #expect(s.needs.energy == 40)
     }
 
     @Test func activityEndsANapButNotADeepSleep() {

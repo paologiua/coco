@@ -38,6 +38,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// still flying in would put the bubble beside an empty patch of screen.
     private var pendingLine: String?
     private var pendingIsBirthday = false
+    /// Latched from the advance that noticed the absence, because the next tick's
+    /// advance immediately clears the flag on the simulation.
+    private var sawLongAbsence = false
     private var isDragging = false
     private var ticks = 0
     private var runningHz = AppDelegate.awakeHz
@@ -53,6 +56,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         sim = Simulation(state: store.load())
         sim.advance(to: Date())            // charge the time she was not running
+        sawLongAbsence = sim.returnedFromLongAbsence
         store.save(sim.state)
 
         scale = sim.state.scale ?? Self.defaultScale
@@ -60,6 +64,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         buildStatusItem()
         showMood()
         startWelcomeIfNeeded()
+        queueReunionIfNeeded()
         retime(to: Self.awakeHz)
     }
 
@@ -109,6 +114,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         pendingLine = text(named: "welcome")
         sim.markFirstLaunchDone()
         store.save(sim.state)
+    }
+
+    /// Coming back after days away should be a welcome, not a reckoning. The
+    /// simulation has counted the absence since the model was written; nothing ever
+    /// read the flag, so until now returning looked exactly like never having left.
+    ///
+    /// Reuses the bubble the welcome and the birthday already use, so the whole
+    /// feature is a text file and a queued line. The welcome wins if both are due:
+    /// a first launch is not a return.
+    private func queueReunionIfNeeded() {
+        guard sawLongAbsence, pendingLine == nil, sim.state.firstLaunchDone else { return }
+        sawLongAbsence = false
+        pendingLine = text(named: "reunion") ?? "You came back!"
+        NSLog("Coco: reunion line queued")
     }
 
     /// Plain text from the bundle, so the birthday line can be rewritten in later years
@@ -330,6 +349,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         if ticks % Int(runningHz) == 0 {
             sim.advance(to: now)
+            // Also catches the lid being reopened while she was already running.
+            if sim.returnedFromLongAbsence { sawLongAbsence = true }
+            queueReunionIfNeeded()
             updateNapFromMachineIdle()
             showMood()
             checkBirthday(now: now)
@@ -352,6 +374,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         updateInteraction(dt: dt, screen: screen)
         driver.tick(dt: dt, now: now, cursor: NSEvent.mouseLocation, screen: screen)
+        if driver.behaviour == .flying { sim.spendFlightEnergy(seconds: dt) }
 
         if driver.behaviour == .sleeping {
             particles.breatheZzz(dt: dt, at: emissionPoint)
