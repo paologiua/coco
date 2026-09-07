@@ -73,14 +73,79 @@ struct BehaviourTests {
         #expect(sim.feed() == .done)
         driver.interactionTarget = nil
         driver.faceTheHuman()
-        driver.welcomeCursor(for: 3, now: now)
+        driver.welcomeCursor()
         driver.tick(dt: 1.3, now: now.addingTimeInterval(1.3), cursor: hand, screen: screen)
         driver.tick(dt: 0.1, now: now.addingTimeInterval(1.4), cursor: hand, screen: screen)
 
         #expect(sim.needs.hunger == 95)
         #expect(driver.behaviour != .flying)
 
+        // The hand has not moved since it fed her, so it is still not a threat: this
+        // used to expire on a three-second timer and she flew off from the person who
+        // had just fed her.
         driver.tick(dt: 0.1, now: now.addingTimeInterval(3.1), cursor: hand, screen: screen)
+        driver.tick(dt: 0.1, now: now.addingTimeInterval(9.0), cursor: hand, screen: screen)
+        #expect(driver.behaviour != .flying)
+
+        // Withdrawing ends the welcome, and coming back is an ordinary approach.
+        let away = CGPoint(x: hand.x + 400, y: hand.y)
+        driver.tick(dt: 0.1, now: now.addingTimeInterval(9.1), cursor: away, screen: screen)
+        driver.tick(dt: 0.1, now: now.addingTimeInterval(9.2), cursor: hand, screen: screen)
+        #expect(driver.behaviour == .flying)
+    }
+
+    @Test func offeredFoodBroughtCloserDoesNotPushHerAway() throws {
+        let sim = Simulation(state: {
+            var state = SavedState.fresh(now: now)
+            state.needs.hunger = 50
+            return state
+        }())
+        let driver = try makeDriver(sim)
+        driver.interactionStyle = .waitBeside
+
+        // Fly her over to the food, which sits 65 points to her right.
+        var hand = CGPoint(x: driver.bodyCentre.x + 300, y: driver.bodyCentre.y)
+        for step in 0..<200 {
+            driver.interactionTarget = CGPoint(x: hand.x - 65, y: hand.y)
+            driver.tick(dt: 0.05, now: now.addingTimeInterval(Double(step) * 0.05),
+                        cursor: hand, screen: screen)
+        }
+        let waiting = driver.bodyCentre
+        #expect(driver.behaviour != .flying)
+        #expect(abs(waiting.x - (hand.x - 65)) < 4)
+
+        // Now bring the food to her, which is what a person actually does. She must
+        // hold still: a standoff maintained against an approaching cursor retreats as
+        // fast as the hand advances, so she could never be fed and read as fleeing.
+        for step in 0..<15 {
+            hand.x -= 4
+            driver.interactionTarget = CGPoint(x: hand.x - 65, y: hand.y)
+            driver.tick(dt: 0.05, now: now.addingTimeInterval(10 + Double(step) * 0.05),
+                        cursor: hand, screen: screen)
+        }
+        #expect(driver.behaviour != .flying)
+        #expect(abs(driver.bodyCentre.x - waiting.x) < 1)
+        // And she is still inside the radius a click needs to feed her.
+        #expect(hypot(driver.bodyCentre.x - hand.x,
+                      driver.bodyCentre.y - hand.y) < BehaviourDriver.personalSpace)
+    }
+
+    @Test func foodCarriedOutOfReachIsWorthFollowing() throws {
+        let sim = Simulation(state: .fresh(now: now))
+        let driver = try makeDriver(sim)
+        driver.interactionStyle = .waitBeside
+
+        var hand = CGPoint(x: driver.bodyCentre.x + 65, y: driver.bodyCentre.y)
+        for step in 0..<40 {
+            driver.interactionTarget = CGPoint(x: hand.x - 65, y: hand.y)
+            driver.tick(dt: 0.05, now: now.addingTimeInterval(Double(step) * 0.05),
+                        cursor: hand, screen: screen)
+        }
+        #expect(driver.behaviour != .flying)
+
+        hand.x += 400
+        driver.interactionTarget = CGPoint(x: hand.x - 65, y: hand.y)
+        driver.tick(dt: 0.05, now: now.addingTimeInterval(5), cursor: hand, screen: screen)
         #expect(driver.behaviour == .flying)
     }
 

@@ -67,3 +67,21 @@ After a successful Feed, `BehaviourDriver.welcomeCursor` now suppresses cursor a
 The user retested and Feed still failed. The saved state remained at Hunger 49.96 after clicking, proving `feed()` was never called; the earlier cursor-grace fix addressed a real secondary defect but not the reported failure. A minimized AppKit test then reproduced the cause: `TargetView.acceptsFirstMouse(for:)` inherited `false`. Because Coco is deliberately non-activating, AppKit discarded the first click while another app was frontmost.
 
 `TargetView` now explicitly accepts the first mouse event. This preserves the non-activating panel while delivering the food click. The regression test failed before the override and passes after it; the full suite now has 32 passing tests.
+
+## Comments
+
+### 2026-09-07 — Feed was unfeedable: two defects found in use
+
+Reported from actually using her: *"si avvicina per prendere il cibo ma appena provo a darglielo scappa via."* Both causes were in the code as shipped, and the second was written into a test.
+
+**1. The standoff was maintained, not a stopping point.** `updateInteraction` recomputed `interactionTarget` as `mouse ± 65` every tick, and the driver flew to it every tick. So the 65-point gap was held *continuously*: moving the hand 30 points towards her moved her target 30 points away, and she backed off at flight speed exactly as fast as the hand advanced. She could never be reached, and since retreating plays the flight clip, it read as fleeing the food she had just flown across the screen to get.
+
+She now **latches on arrival** (`hasArrivedBeside`) and holds position while the food stays within her personal space. Bringing the hand closer does nothing, which is the whole point. Carrying it further than `personalSpace` un-latches and she goes after it again — deliberately the same 110 points the click guard uses, so there is no band where she looks reachable and a click silently does nothing.
+
+The latch is food-only: the hoop is a moving target she must keep chasing, so `interactionStyle` (`.waitBeside` / `.chase`) now says which of the two `interactionTarget` means. Without that split, fixing Feed would have broken Play.
+
+**2. Feeding her made her leave.** `welcomeCursor(for: 3)` suppressed cursor-avoidance for three seconds after a feed. The eating pose is 1.2 s, the hand is still sitting right there when the timer expires, so she startled at the person who had just fed her — a timer only ever postpones that. The welcome now lasts **until the hand withdraws** past her personal space; coming back afterwards is a fresh approach and she startles at it like any other.
+
+`feedingDoesNotTurnTheWaitingHandIntoAThreat` asserted `behaviour == .flying` at 3.1 s — the test's own name contradicted its last assertion. Updated, plus `offeredFoodBroughtCloserDoesNotPushHerAway` and `foodCarriedOutOfReachIsWorthFollowing`. **34 tests pass**, `dist/Coco.app` rebuilt and re-signed.
+
+Visual confirmation on the target Mac still belongs to [Install and verify on the recipient's Mac](07-install-on-target.md).

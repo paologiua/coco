@@ -214,13 +214,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         interaction.onClick = { [weak self] in
             guard let self, self.interactionKind == .food,
                   hypot(self.driver.bodyCentre.x - NSEvent.mouseLocation.x,
-                        self.driver.bodyCentre.y - NSEvent.mouseLocation.y) < 110,
+                        self.driver.bodyCentre.y - NSEvent.mouseLocation.y)
+                        < BehaviourDriver.personalSpace,
                   self.sim.needs.hunger <= 85 else { return }
             self.interaction.finish()
             let outcome = self.sim.feed()
             self.perform(outcome, celebrateWith: .seed, count: 4)
             if outcome == .done {
-                self.driver.welcomeCursor(for: 3, now: Date())
+                self.driver.welcomeCursor()
             }
             self.store.save(self.sim.state)
         }
@@ -246,13 +247,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         let mouse = NSEvent.mouseLocation
         if kind == .hoop {
+            // The hoop is a moving target: she keeps chasing it for as long as it is up.
+            driver.interactionStyle = .chase
             driver.interactionTarget = hoopGame.target(bird: driver.bodyCentre, hoop: mouse,
                                                        scale: Double(scale))
             interaction.passes = hoopGame.passes
             if hoopGame.passes >= 3 { interaction.finish(completed: true) }
             return
         }
-        // Stop beside the food, never directly below the pointer.
+        // Fly over, stop beside the food rather than directly below the pointer, and
+        // then wait: the hand is supposed to come to her from here.
+        driver.interactionStyle = .waitBeside
         let side = driver.bodyCentre.x < mouse.x ? -1.0 : 1.0
         driver.interactionTarget = CGPoint(x: mouse.x + side * 65, y: mouse.y)
     }

@@ -18,8 +18,11 @@ final class BehaviourDriver {
     // Points per second.
     private static let walkSpeed = 34.0
     private static let flySpeed = 150.0
-    /// How close the cursor may come before she startles.
-    private static let personalSpace = 110.0
+    /// How close the cursor may come before she startles, and — the same distance,
+    /// deliberately — how near the offered food may be before she stops chasing it and
+    /// waits. A click outside it does not feed her, so holding further out than this
+    /// would leave a band where she looks reachable and silently is not.
+    static let personalSpace = 110.0
     /// A bird that crosses the text you are typing gets the app closed on day two, so
     /// she keeps to the outer thirds of the screen unless dropped elsewhere.
     private static let edgeBias = 0.72
@@ -38,13 +41,22 @@ final class BehaviourDriver {
     private(set) var position: CGPoint
     private(set) var facingRight = true
 
+    /// What she should do with `interactionTarget`. Food is somewhere to go and then
+    /// wait beside; the hoop is a moving target she chases for as long as it is up.
+    enum InteractionStyle { case waitBeside, chase }
+
     private var target: CGPoint?
-    var interactionTarget: CGPoint?
+    var interactionStyle: InteractionStyle = .waitBeside
+    var interactionTarget: CGPoint? {
+        didSet { if interactionTarget == nil { hasArrivedBeside = false } }
+    }
+    /// Set once she has stopped beside the food, and the reason she then stays put.
+    private var hasArrivedBeside = false
     private var sleepLanding: CGPoint?
     private var sleepingPerch: Perch?
     var availablePerches: [Perch] = []
     private var startledUntil = Date.distantPast
-    private var cursorWelcomeUntil = Date.distantPast
+    private var cursorIsWelcome = false
     private var restUntil: Date = .distantPast
     private var bobPhase = 0.0
     private var facingBeforeReaction: Bool?
@@ -176,11 +188,23 @@ final class BehaviourDriver {
                                         max(screen.minX, screen.maxX - canvasSize.width)),
                                   y: min(max(point.y - Double(Canvas.height) * scale / 2, screen.minY),
                                          max(screen.minY, screen.maxY - canvasSize.height)))
+            // Once she has stopped beside the food she waits, and bringing the hand
+            // closer must not move her: a standoff kept against an approaching cursor
+            // retreats exactly as fast as you advance, so she can never be fed and
+            // reads as fleeing the food she just flew over to get. She goes after it
+            // again only if it is carried out of reach.
+            if hasArrivedBeside {
+                if hypot(bodyCentre.x - cursor.x, bodyCentre.y - cursor.y) <= Self.personalSpace {
+                    return
+                }
+                hasArrivedBeside = false
+            }
             if hypot(position.x - desired.x, position.y - desired.y) > 3 {
                 target = desired
                 if behaviour != .flying { enter(.flying) }
                 advanceTowardsTarget(dt: dt, speed: Self.flySpeed)
             } else {
+                if interactionStyle == .waitBeside { hasArrivedBeside = true }
                 stay(for: 1)
             }
             return
@@ -195,7 +219,12 @@ final class BehaviourDriver {
             return
         }
 
-        if now >= cursorWelcomeUntil, startled(by: cursor, in: screen) { return }
+        // A hand that has not moved since it fed her has not become a threat.
+        if cursorIsWelcome,
+           hypot(bodyCentre.x - cursor.x, bodyCentre.y - cursor.y) > Self.personalSpace {
+            cursorIsWelcome = false
+        }
+        if !cursorIsWelcome, startled(by: cursor, in: screen) { return }
 
         switch behaviour {
         case .walking, .flying:
@@ -213,8 +242,7 @@ final class BehaviourDriver {
     /// freezes reads as broken, one that flees reads as alive.
     private func startled(by cursor: CGPoint, in screen: NSRect) -> Bool {
         guard behaviour == .resting || behaviour == .walking else { return false }
-        let centre = CGPoint(x: position.x + canvasSize.width / 2,
-                             y: position.y + Double(Canvas.height) * scale / 2)
+        let centre = bodyCentre
         guard hypot(centre.x - cursor.x, centre.y - cursor.y) < Self.personalSpace else { return false }
         let away = cursor.x > centre.x ? screen.minX + 20 : screen.maxX - canvasSize.width - 20
         flyTo(CGPoint(x: away, y: screen.minY + Double.random(in: 0...120)))
@@ -365,9 +393,13 @@ final class BehaviourDriver {
         react(with: sprites.front, seconds: seconds)
     }
 
-    /// A hand that has just fed her is welcome for a moment. Without this grace period,
-    /// the normal cursor-avoidance rule fires as soon as the eating reaction ends.
-    func welcomeCursor(for seconds: TimeInterval, now: Date) {
-        cursorWelcomeUntil = now.addingTimeInterval(seconds)
-    }
+    /// The hand that has just fed her is welcome. Without this the ordinary
+    /// cursor-avoidance rule fires the moment the eating pose ends, so the reward for
+    /// feeding her is watching her leave.
+    ///
+    /// It lasts until the hand withdraws past her personal space rather than for a
+    /// fixed few seconds: the hand is still right there when the pose ends, so any
+    /// timer just postpones the same startle. Coming back afterwards is a fresh
+    /// approach and she startles at it like any other.
+    func welcomeCursor() { cursorIsWelcome = true }
 }
