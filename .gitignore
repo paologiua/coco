@@ -13,3 +13,10 @@
 
 # Log e artefatti locali
 *.log
+
+# Swift build products
+.build/
+
+# Generated app bundle and icon staging
+build/
+dist/
