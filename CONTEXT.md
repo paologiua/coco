@@ -12,7 +12,8 @@ A quantity that falls on its own with the passage of **real** time and is raised
 
 - **Hunger** — raised by feeding.
 - **Affection** — raised by playing and by petting.
-- **Energy** — spent by being awake, restored only by sleeping.
+- **Energy** — spent by being awake, restored only by sleeping, and the only Need that
+  cares whether the app was actually running.
 
 Needs measure *what Coco lacks attention in*, not what she deserves. A Need at its floor changes how she looks and moves; it never changes whether she is there.
 
@@ -40,13 +41,17 @@ What Coco is doing right now: resting, walking, flying, eating, playing, sleepin
 Two different sleeps, distinguished by what wakes her.
 
 - A **Nap** is triggered by the machine going idle. Any human activity ends it.
-- **Deep Sleep** is triggered by Energy running out. Human activity does *not* end it; she sleeps until Energy is substantially restored. She can be dragged awake, but stays drowsy.
+- **Deep Sleep** is triggered by Energy running out. Human activity does *not* end it; she sleeps until Energy is substantially restored. She can be dragged awake, but stays drowsy. **Sleep** from the menu is a Deep Sleep with a timer on it, and it ends when that timer says so.
 
 The distinction exists so that Energy can actually recover: a sleep that any mouse movement interrupts is a sleep that never happens.
+
+They also **recover at different rates**, which is the lever that decides how often Coco is seen asleep. Deep Sleep fills her in half an hour, so an episode lasts about twelve minutes — long enough to watch, short enough not to be a lock-out, and Feed and Play are both refused throughout. A Nap is worth far less: at the Deep Sleep rate a lunch break would refill her, she would never fall below the threshold again, and the sleeping pose, the perching and the startle would only ever happen with nobody watching.
 
 ## Catch-up
 
 What happens to Needs across time when the app was not running — the Mac was asleep, or Coco was quit. Decay is charged against real elapsed time but **capped**, so a long absence costs no more than a short one, and a return after a long absence is greeted as a **reunion** rather than a reckoning.
+
+Hunger and Affection decay across it: she really was unfed. **Energy does the opposite** — time the app was not ticking is time Coco was not awake for, whatever the saved state says, so it *rests* her. A closed lid is not a waking hour. Without this, a night was charged as twelve hours awake and she was found flat out every morning, asleep until nearly lunchtime, which is the wrong first thing to see on a machine that was given to you as a present.
 
 ## Birthday
 

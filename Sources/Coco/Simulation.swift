@@ -34,6 +34,11 @@ final class Simulation {
     static let deepSleepBelow = 20.0
     static let wakesAbove = 60.0
 
+    /// A single `advance` covering more than this did not happen while Coco was on
+    /// screen: the Mac was asleep or she was not running. The live tick is about a
+    /// second, so nothing normal comes close.
+    static let notTickingAbove = 2.0 / 60
+
     /// Petting is worth little each time and is capped per hour: without the cap,
     /// holding the mouse down maxes Affection in ten seconds and the toy is over.
     static let petGain = 4.0
@@ -62,10 +67,19 @@ final class Simulation {
         var needs = state.needs
         needs.hunger -= 100 / Needs.Decay.hungerHours * charged
         needs.affection -= 100 / Needs.Decay.affectionHours * charged
-        if state.sleep == .awake {
-            needs.energy -= 100 / Needs.Decay.energyAwakeHours * charged
+        // Energy is the one Need that must know whether the app was actually running.
+        // A closed lid used to be charged as time spent awake — up to the full 12-hour
+        // cap of it — so a night cost her 75 points and she was found flat and asleep
+        // every morning. Hunger and Affection are right to decay across it; being shut
+        // in a closed laptop is not being awake.
+        if elapsed > Self.notTickingAbove {
+            needs.energy += 100 / Needs.Decay.energyDeepSleepHours * charged
         } else {
-            needs.energy += 100 / Needs.Decay.energyAsleepHours * charged
+            switch state.sleep {
+            case .awake: needs.energy -= 100 / Needs.Decay.energyAwakeHours * charged
+            case .nap:   needs.energy += 100 / Needs.Decay.energyNapHours * charged
+            case .deep:  needs.energy += 100 / Needs.Decay.energyDeepSleepHours * charged
+            }
         }
         needs.clampAll()
 
@@ -85,13 +99,20 @@ final class Simulation {
     }
 
     private func updateSleep(now: Date) {
-        // A hand-asked nap runs its course before the energy rules get a say.
+        // A hand-asked nap runs its course before the energy rules get a say, and then
+        // it ends. Falling through to the energy rules would hold her under until 60,
+        // so asking for a five-minute nap while she was tired used to put her out for
+        // hours. If she is still exhausted the ordinary rule below puts her back to
+        // sleep on the next advance — which now costs about twelve minutes, not an
+        // afternoon, so letting that happen is honest rather than punishing.
         if let until = state.forcedSleepUntil {
             if now < until {
                 state.sleep = .deep
                 return
             }
             state.forcedSleepUntil = nil
+            state.sleep = .awake
+            return
         }
         switch state.sleep {
         case .awake where state.needs.energy < Self.deepSleepBelow:

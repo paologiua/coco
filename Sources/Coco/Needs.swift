@@ -17,8 +17,19 @@ struct Needs: Codable, Equatable {
         static let affectionHours = 72.0
         /// Energy is spent by being AWAKE, not by the clock.
         static let energyAwakeHours = 16.0
-        /// And restored only by sleeping.
-        static let energyAsleepHours = 8.0
+        /// Restored only by sleeping, and at two different rates on purpose.
+        ///
+        /// Real sleep — the collapse from exhaustion, and the nap asked for from the
+        /// menu — fills her in half an hour, which makes a Deep Sleep last about
+        /// twelve minutes rather than three hours. What the human actually experiences
+        /// is the LENGTH OF A SLEEP, not the time from empty to full, and hours of it
+        /// is a lock-out: Feed and Play are both refused while she is asleep.
+        static let energyDeepSleepHours = 0.5
+        /// A doze while the Mac is left alone is worth far less. At the deep rate a
+        /// lunch break would refill her completely, she would never again fall below
+        /// the Deep Sleep threshold, and the sleeping pose, the perching and the
+        /// startle would only ever happen overnight with nobody watching.
+        static let energyNapHours = 4.0
     }
 
     mutating func clampAll() {

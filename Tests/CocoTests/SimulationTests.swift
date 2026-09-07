@@ -103,8 +103,59 @@ struct SimulationTests {
 
     @Test func emptyEnergyPutsHerIntoDeepSleep() {
         let s = sim { $0.needs = Needs(hunger: 50, affection: 50, energy: 21) }
-        s.advance(to: hours(1))
+        // A minute at a time, as the live tick does. One flat one-hour advance means
+        // the app was not running for that hour, and rests her instead of tiring her.
+        for minute in 1...15 { s.advance(to: epoch.addingTimeInterval(Double(minute) * 60)) }
         #expect(s.sleep == .deep)
+    }
+
+    @Test func aClosedLaptopRestsHerRatherThanTiringHer() {
+        // Left awake, lid shut for the night. This used to be charged as twelve hours
+        // spent awake — minus 75 energy — so she was found flat out every morning and
+        // stayed asleep until nearly lunchtime. Opening your laptop is not a fine.
+        let s = sim { $0.needs = Needs(hunger: 80, affection: 80, energy: 80) }
+        s.advance(to: hours(10))
+        #expect(s.needs.energy == 100)
+        #expect(s.sleep == .awake)
+        // Hunger and Affection are right to decay across it: she really was unfed.
+        #expect(s.needs.hunger < 80)
+    }
+
+    @Test func aDozeIsWorthLessThanRealSleep() {
+        let dozing = sim { $0.needs.energy = 20 }
+        dozing.machineWentIdle()
+        let sleeping = sim { $0.sleep = .deep; $0.needs.energy = 20 }
+        for minute in 1...10 {
+            let at = epoch.addingTimeInterval(Double(minute) * 60)
+            dozing.advance(to: at)
+            sleeping.advance(to: at)
+        }
+        #expect(sleeping.needs.energy > dozing.needs.energy + 20)
+        // The point of the slower rate: a lunch break must not refill her. If it did
+        // she would never fall below the Deep Sleep threshold again, and the sleeping
+        // pose, the perching and the startle would only ever happen unobserved.
+        #expect(dozing.needs.energy < 26)
+    }
+
+    @Test func aHandAskedNapEndsWhenItSaysItDoes() {
+        // Tired but not empty, so the nap is about three and a half minutes. On expiry
+        // it used to fall through to the energy rules and hold her under until 60 —
+        // hours, from a menu item that promised a doze.
+        let s = sim { $0.needs = Needs(hunger: 80, affection: 80, energy: 30) }
+        s.putToSleep(at: epoch)
+        s.advance(to: epoch.addingTimeInterval(60))
+        #expect(s.sleep == .deep)
+        s.advance(to: epoch.addingTimeInterval(400))
+        #expect(s.sleep == .awake)
+        #expect(s.needs.energy < Simulation.wakesAbove)
+    }
+
+    @Test func aDeepSleepLastsMinutesNotAnAfternoon() {
+        // The number the human actually experiences: how long she is unreachable for,
+        // with Feed and Play both refused. Twenty to sixty at the deep rate.
+        let s = sim { $0.sleep = .deep; $0.needs.energy = Simulation.deepSleepBelow }
+        for minute in 1...12 { s.advance(to: epoch.addingTimeInterval(Double(minute) * 60)) }
+        #expect(s.sleep == .awake)
     }
 
     @Test func activityEndsANapButNotADeepSleep() {

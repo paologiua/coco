@@ -83,6 +83,11 @@ struct BehaviourTests {
         // The hand has not moved since it fed her, so it is still not a threat: this
         // used to expire on a three-second timer and she flew off from the person who
         // had just fed her.
+        //
+        // Park her first. `rest` schedules against the wall clock while `tick` takes an
+        // injected date, so left alone she may decide to wander mid-test and the flight
+        // she chooses is indistinguishable from a startle. Resting still startles.
+        driver.stay(for: 60)
         driver.tick(dt: 0.1, now: now.addingTimeInterval(3.1), cursor: hand, screen: screen)
         driver.tick(dt: 0.1, now: now.addingTimeInterval(9.0), cursor: hand, screen: screen)
         #expect(driver.behaviour != .flying)
