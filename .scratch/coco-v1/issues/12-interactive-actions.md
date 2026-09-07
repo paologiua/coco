@@ -85,3 +85,9 @@ The latch is food-only: the hoop is a moving target she must keep chasing, so `i
 `feedingDoesNotTurnTheWaitingHandIntoAThreat` asserted `behaviour == .flying` at 3.1 s — the test's own name contradicted its last assertion. Updated, plus `offeredFoodBroughtCloserDoesNotPushHerAway` and `foodCarriedOutOfReachIsWorthFollowing`. **34 tests pass**, `dist/Coco.app` rebuilt and re-signed.
 
 Visual confirmation on the target Mac still belongs to [Install and verify on the recipient's Mac](07-install-on-target.md).
+
+### 2026-09-07 — Feed confirmed working by eye
+
+The dev confirmed Feed behaves correctly after the two fixes above: she flies over, holds position while the food is brought to her, and takes it. Observed on the **dev machine (macOS 26)**, so this closes the behavioural question but not the macOS 15 chrome question — visual acceptance on the target Mac still belongs to [Install and verify on the recipient's Mac](07-install-on-target.md).
+
+Play was not reported on in this session. It shares `interactionTarget` with Feed through the opposite `interactionStyle`, so it remains the regression worth checking first if anything looks wrong later.
