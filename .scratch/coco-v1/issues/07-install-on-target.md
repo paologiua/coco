@@ -73,3 +73,90 @@ Verified, not assumed:
 One thing worth catching before delivery: the dev machine's `~/Library/Application Support/Coco/state.json` currently holds `"lastBirthdayCelebrated": 2026` and **no birthday month/day** — dev testing marked this year celebrated. That state lives outside the bundle and is not carried by the USB copy, so her Mac starts fresh; the risk is only that the birthday **must be set in Settings on her machine after install**, or the easter egg never fires on 14 September. Step 1 of the rehearsal checks below already covers it, but it is the single failure that would cost the whole point of the gift, so it should be confirmed twice: once at install, and once by reopening Settings after a relaunch.
 
 **Still pending, unchanged:** physical USB transfer, launch on the target Mac, all visual checks against macOS 15 chrome, and the reboot/login verification. No target-machine result has been observed. The ticket stays claimed and open.
+
+### 2026-09-08 — Carry-over build re-verified after the balancing pass; consolidated rehearsal checklist
+
+Picked the map back up. [15 — Balancing pass: how the numbers actually feel](15-balancing-pass.md) has resolved since the last pass, so the question this session answers is narrow: **is the bundle on disk the balanced Coco, or the pre-balancing one?** It is the balanced one. Nothing was rebuilt.
+
+Verified, not assumed:
+
+- `bash scripts/test.sh` — **40 tests in 4 suites pass** (32 at the last pass; the balancing suite added the rest, including `flyingCostsMoreThanSittingStill` and `affectionOnlyFallsWhileSheIsOnScreen`).
+- `dist/Coco.app/Contents/MacOS/Coco` was built **2026-09-08 00:42**, and **no file in `Sources/`, `Assets/` or `Package.swift` is newer than it** — the bundle post-dates `be1e442 feat: a much needier Coco, and flying that costs something`.
+- `codesign -dv`: **ad-hoc, arm64, sealed resources, 26 files** (25 at the last pass — `Text/reunion.txt` is the new one).
+- `Info.plist`: `LSUIElement = true`, `LSMinimumSystemVersion = 15.0`, `CFBundleIdentifier = com.paologiua.coco`.
+- Bundled `Text/` now carries **`birthday.txt`, `welcome.txt` and `reunion.txt`** — the reunion line from [15](15-balancing-pass.md) is in the signed bundle, not just in the source tree. `birthday.txt` still reads `Buon compleanno! 🎂`, matching `Assets/Text/`.
+
+**Consolidated rehearsal checklist.** The three comments above accumulated checks in the order they were discovered; this is the same set in the order to actually walk them, and supersedes them as the thing to carry to the machine.
+
+*Install*
+
+1. USB stick, never AirDrop. Drag `Coco.app` into `/Applications` **in the Finder**, not `cp`.
+2. `xattr -dr com.apple.quarantine /Applications/Coco.app`, then `xattr -l`. `com.apple.provenance` remaining is **expected and not a failure**; only `com.apple.quarantine` matters.
+3. Launch: no Dock icon, menubar icon present, welcome bubble flies in.
+
+*The one that costs the whole gift if missed*
+
+4. Settings → set **Birthday to 14 September**. Fresh state has none and the easter egg will not fire without it. Quit, reopen, **confirm it persisted** — the dev machine's own state carries `lastBirthdayCelebrated: 2026` and no month/day, so this has never been observed surviving a relaunch on a clean profile.
+
+*Login*
+
+5. Settings → **Start Coco when I log in**; expect the "Background Items Added" notification.
+6. Confirm *Coco* in System Settings → General → Login Items & Extensions.
+7. **Reboot and confirm she comes back.** The only real test of `SMAppService` on macOS 15. Must not be skipped.
+
+*Visual, against macOS 15 chrome rather than macOS 26 — the only chance to see this*
+
+8. Panel, menubar icon and open menu not visibly misaligned. Dragging steals no focus; clicks pass through where she is not drawn; she is present on all Spaces. Record **over-full-screen visibility as observed**, not assumed — it was never guaranteed.
+9. Feed when hungry: she approaches, a nearby click feeds exactly once, food expires after 20 s. When full she ignores it. Hunger now rises **one bar segment per feed**, so several feeds are needed to fill her — this is the balanced behaviour, not a bug.
+10. Play: hold the hoop in open space; she must fly *through* it and increment the counter. Three passes end it, 20 s timeout otherwise. Proximity alone must not score.
+11. Escape, opening the menu, Hide, Settings and Sleep each remove the cursor object; ordinary clicks reach the foreground app afterwards.
+12. Sleep from mid-air: she lands before closing her eyes and showing Zzz. With an eligible window below, move or close it after landing — she should startle. Check the Dock in **her** configuration; no eligible surface falls back to the screen floor.
+
+*Before handing it over*
+
+13. Review `Assets/Text/birthday.txt` (`Buon compleanno! 🎂`). **If changed, rebuild** — the bundle is signed after the edit, not before.
+14. Show her how to turn Coco off and how to remove her.
+
+**Still pending, unchanged:** physical USB transfer, launch on the target Mac, every visual check, and the reboot/login verification. **No target-machine result has been observed.** The ticket stays claimed and open. Six days to the deadline.
+
+### 2026-09-08 — The menubar icon can be dropped by macOS, and then Coco is unreachable
+
+Found while investigating a report of "no icon in the menubar" on the **dev** machine.
+Not a bug in Coco, and it is a delivery risk worth carrying to her Mac.
+
+Measured on the dev machine (14" MacBook, notched):
+
+```
+auxTopRight: (850.0, 950.0, 662.0, 32.0)
+```
+
+Status items get **662 points**, the strip right of the notch, and nothing else. When
+that strip is full macOS **silently drops** the item that does not fit. Proven, not
+inferred: with the app running, `statusItem.button` was non-nil, `isVisible` was
+`true`, `length` was `squareLength`, all four mood icons had loaded and a valid 22x22
+`NSImage` was assigned — and replacing the image with the plain text title `COCO` still
+rendered nothing. The item is configured correctly and the system refuses to show it.
+
+The single biggest consumer was the system **Now Playing** widget, which is ~130 pt and
+**grows with the track title**. So a menubar that has room today loses Coco when a song
+with a long name starts.
+
+**The trap:** `Hide Coco` sets `hidden` in the saved state, and the only way to undo it
+is the menu behind that icon. Hidden *and* iconless, Coco cannot be recovered from
+inside the app at all — which is exactly the state the dev machine was found in.
+`scripts/dev-state.py --show` was added as the way out, but that is a developer tool
+and **the recipient will not have it**.
+
+Add to the rehearsal:
+
+1. Before declaring the install good, **check her menubar has a free slot** and that
+   Coco's icon is actually visible — not merely that the app is running.
+2. If it is tight, offer to turn off Now Playing (System Settings → Control Centre →
+   Now Playing → Don't show in Menu Bar) while she watches, so she can undo it.
+3. **Show her `Hide Coco` and how to undo it**, and consider not showing her the item
+   at all: on a full menubar it is a one-way door.
+
+Worth considering before the gift: a fallback that does not depend on the status item —
+for example, refusing to persist `hidden` across a relaunch, so quitting and reopening
+always brings her back. Not decided here; recorded because it is cheap insurance on the
+one machine we cannot debug remotely.

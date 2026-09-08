@@ -22,6 +22,10 @@ parser.add_argument("--birthday", help='"today", "MM-DD", or "none"')
 parser.add_argument("--forget-birthday", action="store_true",
                     help="clear the year stamp so the message fires again")
 parser.add_argument("--reset", action="store_true", help="everything full, awake")
+parser.add_argument("--show", action="store_true",
+                    help="undo Hide Coco. The only way back when the menubar has no "
+                         "room for her icon: hidden and iconless, she is unreachable "
+                         "from inside the app.")
 parser.add_argument("--no-launch", action="store_true")
 args = parser.parse_args()
 
@@ -34,6 +38,9 @@ if not STATE.exists():
 state = json.loads(STATE.read_text())
 now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
+
+if args.show:
+    state["hidden"] = False
 if args.reset:
     state["needs"] = {"hunger": 100.0, "affection": 100.0, "energy": 100.0}
     state["sleep"] = "awake"
