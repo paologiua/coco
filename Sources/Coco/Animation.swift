@@ -20,9 +20,10 @@ struct Clip {
     /// A long hold on one sprite with a short blink at the end. Built as frames rather
     /// than special-cased in the player: an array of repeats costs nothing and keeps
     /// the player with exactly one job.
-    static func breathing(_ open: Sprite, blink: Sprite, seconds: Double = 4, fps: Double = 10) -> Clip {
-        let total = Int(seconds * fps)
-        return Clip(frames: Array(repeating: open, count: total - 2) + [blink, blink],
+    static func breathing(_ open: Sprite, blink: [Sprite], seconds: Double = 4,
+                          fps: Double = 10) -> Clip {
+        let total = max(blink.count + 1, Int(seconds * fps))
+        return Clip(frames: Array(repeating: open, count: total - blink.count) + blink,
                     fps: fps, loops: true)
     }
 }

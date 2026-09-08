@@ -60,21 +60,19 @@ final class BehaviourDriver {
     private var restUntil: Date = .distantPast
     private var bobPhase = 0.0
     private var facingBeforeReaction: Bool?
-    /// Set while the eating clip runs. The peck is a drawn head-down frame AND a dip of
-    /// the whole bird; the dip is the half that reads from across a room, and it is the
-    /// "eating dip" the animation player has claimed to have since ticket 09.
-    private var isPecking = false
     /// The mood the resting clip was built for. Mood changes while she is already
     /// resting have to be picked up, or she keeps the face she had when she sat down.
     private var restingMood: Mood?
 
     struct SpriteSet {
-        let idle, blink, sad, petted, pettedDeep: Sprite
+        let idle, sad: Sprite
+        /// Open, closing, shut, opening. Drawn now rather than derived by editing the
+        /// eye, so the whole blink is real animation.
+        let blink: [Sprite]
+        let petted: [Sprite]
         let fly: [Sprite]
-        /// Head down at the ground. Optional because the peck is half drawing and half
-        /// motion: without it the dip below still reads as eating, so a missing frame
-        /// costs polish rather than the animation.
-        let peck: Sprite?
+        /// Eight frames: head down, beak to the ground, the seed taken, and back up.
+        let peck: [Sprite]
         /// The same poses with the party hat drawn in, keyed by the plain sprite's
         /// name. Baked rather than laid over the frame at runtime: one `hat_side`
         /// layer fitted the perched poses and floated a pixel or two clear of the
@@ -129,10 +127,6 @@ final class BehaviourDriver {
                 ? (sin(bobPhase * 6) > 0 ? 3 : 0)
                 : (sin(bobPhase * 1.6) > 0.7 ? 3 : 0)
         case .sleeping: return 0
-        // Negative is downwards: she stoops to the ground and comes back up. Twice the
-        // walk's amplitude, because a peck that moves as little as a footfall reads as
-        // a stumble rather than a bird taking food.
-        case .reacting: return isPecking && sin(bobPhase * 14) > 0 ? -6 : 0
         default:        return 0
         }
     }
@@ -227,7 +221,6 @@ final class BehaviourDriver {
             if animator.isFinished {
                 if let restore = facingBeforeReaction { facingRight = restore }
                 facingBeforeReaction = nil
-                isPecking = false
                 enter(.resting)
             }
             return
@@ -311,9 +304,6 @@ final class BehaviourDriver {
     // MARK: - Transitions
 
     private func enter(_ next: Behaviour) {
-        // Any transition out of the reaction ends the peck. Leaving it set would carry
-        // the dip into walking or flight, where it reads as a limp.
-        if next != .reacting { isPecking = false }
         behaviour = next
         switch next {
         case .resting:
@@ -328,7 +318,7 @@ final class BehaviourDriver {
         case .flying, .dragged:
             animator.play(Clip(frames: sprites.fly, fps: 12, loops: true))
         case .sleeping:
-            animator.play(.still(sprites.blink))       // side-on, eyes closed, feet on the perch
+            animator.play(.still(sprites.blink[2]))    // side-on, eyes shut, feet on the perch
         case .reacting:
             break
         }
@@ -390,13 +380,13 @@ final class BehaviourDriver {
     /// Head-down and head-up alternating rather than a drawn arc between them. A bird's
     /// peck snaps — it does not sweep — so the two states are the whole movement, and
     /// two states are also all the generator can be trusted to register (ticket 01).
+    /// Eating: the drawn peck cycle, head down to the ground and back up with the seed.
+    ///
+    /// The whole movement is in the frames. An earlier version pecked by dipping the
+    /// window while holding one pose, which was the best that could be done before the
+    /// art existed; running both would now stoop her twice for every peck.
     func eat() {
-        isPecking = true
-        let down = sprites.peck ?? sprites.idle
-        react(with: Clip(frames: [sprites.idle, down, down,
-                                  sprites.idle, down, down,
-                                  sprites.idle, down, down, sprites.idle],
-                         fps: 7, loops: false))
+        react(with: Clip(frames: sprites.peck, fps: 7, loops: false))
     }
 
     /// Being petted: eyes closing and scrunching, twice, then opening.
@@ -406,10 +396,7 @@ final class BehaviourDriver {
     /// and shut — a drawn half-way frame is indistinguishable from `blink`. Two
     /// scrunches rather than one: a single squeeze reads as a long blink.
     func acceptPetting() {
-        react(with: Clip(frames: [sprites.blink, sprites.petted,
-                                  sprites.pettedDeep, sprites.pettedDeep, sprites.petted,
-                                  sprites.pettedDeep, sprites.pettedDeep, sprites.petted,
-                                  sprites.blink],
+        react(with: Clip(frames: sprites.petted + sprites.petted.reversed(),
                          fps: 7, loops: false))
     }
 
@@ -446,9 +433,7 @@ final class BehaviourDriver {
     /// second silhouette to keep in step with every change to her design, and it read
     /// as a different bird rather than the same bird turning round.
     func celebrate() {
-        react(with: Clip(frames: [sprites.petted, sprites.pettedDeep, sprites.petted,
-                                  sprites.pettedDeep, sprites.blink, sprites.idle],
-                         fps: 6, loops: false))
+        react(with: Clip(frames: sprites.petted + [sprites.idle], fps: 6, loops: false))
     }
 
     /// The hand that has just fed her is welcome. Without this the ordinary

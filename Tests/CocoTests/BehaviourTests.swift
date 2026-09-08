@@ -14,9 +14,12 @@ struct BehaviourTests {
         NSRect(origin: .zero, size: Canvas.size).fill()
         image.unlockFocus()
         let sprite = try #require(Sprite(name: "fixture", source: image))
-        let set = BehaviourDriver.SpriteSet(idle: sprite, blink: sprite, sad: sprite,
-                                           petted: sprite, pettedDeep: sprite,
-                                           fly: [sprite], peck: sprite, hatted: [:])
+        let set = BehaviourDriver.SpriteSet(idle: sprite, sad: sprite,
+                                           blink: Array(repeating: sprite, count: 4),
+                                           petted: Array(repeating: sprite, count: 4),
+                                           fly: Array(repeating: sprite, count: 4),
+                                           peck: Array(repeating: sprite, count: 8),
+                                           hatted: [:])
         return BehaviourDriver(sim: sim, sprites: set,
                                canvasSize: CGSize(width: 128, height: 176), scale: 2,
                                start: CGPoint(x: 300, y: 400))

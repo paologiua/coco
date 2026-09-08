@@ -80,13 +80,21 @@ The birthday appearance: the **Hat** worn over every frame, a festive resting an
 
 ## Sprite, Frame, Hat
 
-A **Sprite** is one 48x48 image of Coco. A **Frame** is one Sprite in an animation sequence. Coco is drawn facing right and mirrored when she faces left, so a Frame is never drawn twice.
+A **Sprite** is one 64x64 image of Coco. A **Frame** is one Sprite in an animation
+sequence. Coco is drawn facing right and mirrored when she faces left, so a Frame is
+never drawn twice.
 
-The **Hat** is drawn *into* the Frames rather than laid over them: every Sprite has a
-hatted twin, and Party State swaps the whole set. It was an overlay at a fixed anchor
-per pose family, which cost one asset instead of a second copy of every animation — but
-one anchor cannot serve poses that hold the head in different places, and it floated
-clear of the skull in all four flight Frames. The twins are generated, not drawn twice:
-`scripts/make-hatted-sprites.py` finds the head in each Frame by its violet cheek patch
-and places the hat against the crown, so a new animation costs nothing beyond re-running
-it. A Frame with no hatted twin simply goes bare-headed.
+Frames arrive as large drawn sheets and are brought in by `scripts/import-sheets.py`,
+which normalises them: the sheets are drawn at different scales — nearly 1.9x between
+the widest and narrowest — so each is scaled by the bird's *standing height* rather than
+by its bounding box, and every frame in a sheet is anchored on the **tail tip and the
+ground line** so the frames register against each other. The tail is the anchor because
+the feet are not reliable: with her head down at the ground, the lowest pixels are her
+beak.
+
+The **Hat** is drawn *into* the Frames: every Sprite has a hatted twin, and Party State
+swaps the whole set. It was briefly an overlay stamped on at a computed anchor, and
+before that at one fixed anchor per pose family; both are gone. The twins are now drawn
+as part of the art itself, so nothing is positioned at runtime and the hat sits on her
+head in every pose because it was painted there. A Frame with no hatted twin simply goes
+bare-headed.

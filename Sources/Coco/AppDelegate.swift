@@ -69,24 +69,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func loadSprites() -> BehaviourDriver.SpriteSet? {
-        let names = ["idle", "blink", "sad", "petted", "petted_deep",
-                     "fly_0", "fly_1", "fly_2", "fly_3"]
-        var loaded: [String: Sprite] = [:]
-        for name in names {
-            guard let sprite = Sprite(named: name) else { return nil }
-            loaded[name] = sprite
+        func load(_ name: String) -> Sprite? { Sprite(named: name) }
+        func sequence(_ stem: String, _ count: Int) -> [Sprite]? {
+            let frames = (0..<count).compactMap { load("\(stem)_\($0)") }
+            return frames.count == count ? frames : nil
         }
-        // The hatted twins are deliberately optional. A pose whose hat has not been
-        // baked yet goes bare-headed on the birthday; a missing file must never be the
-        // reason the app will not start, least of all on the one day it matters.
+        guard let idle = load("idle"), let sad = load("sad"),
+              let blink = sequence("blink", 4), let petted = sequence("petted", 4),
+              let fly = sequence("fly", 4), let peck = sequence("peck", 8)
+        else { return nil }
+
+        // The hat is drawn into the art, so every frame has a hatted twin under the
+        // same name. They stay optional: a frame whose twin is missing goes bare-headed
+        // on the day rather than stopping the app from starting.
         var hatted: [String: Sprite] = [:]
-        for name in names where Sprite(named: "\(name)_hat") != nil {
-            hatted[name] = Sprite(named: "\(name)_hat")
+        for frame in [idle, sad] + blink + petted + fly + peck {
+            if let worn = load("\(frame.name)_hat") { hatted[frame.name] = worn }
         }
-        return .init(idle: loaded["idle"]!, blink: loaded["blink"]!, sad: loaded["sad"]!,
-                     petted: loaded["petted"]!, pettedDeep: loaded["petted_deep"]!,
-                     fly: [loaded["fly_0"]!, loaded["fly_1"]!, loaded["fly_2"]!, loaded["fly_3"]!],
-                     peck: Sprite(named: "peck"), hatted: hatted)
+        return .init(idle: idle, sad: sad, blink: blink, petted: petted,
+                     fly: fly, peck: peck, hatted: hatted)
     }
 
     private var keepPosition: CGPoint?
