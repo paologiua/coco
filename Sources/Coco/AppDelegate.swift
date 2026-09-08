@@ -69,17 +69,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func loadSprites() -> BehaviourDriver.SpriteSet? {
-        let names = ["idle", "blink", "sad", "petted", "front", "sleep",
-                     "fly_0", "fly_1", "fly_2", "fly_3", "hat_side", "hat_front"]
+        let names = ["idle", "blink", "sad", "petted", "petted_deep",
+                     "fly_0", "fly_1", "fly_2", "fly_3"]
         var loaded: [String: Sprite] = [:]
         for name in names {
             guard let sprite = Sprite(named: name) else { return nil }
             loaded[name] = sprite
         }
+        // The hatted twins are deliberately optional. A pose whose hat has not been
+        // baked yet goes bare-headed on the birthday; a missing file must never be the
+        // reason the app will not start, least of all on the one day it matters.
+        var hatted: [String: Sprite] = [:]
+        for name in names where Sprite(named: "\(name)_hat") != nil {
+            hatted[name] = Sprite(named: "\(name)_hat")
+        }
         return .init(idle: loaded["idle"]!, blink: loaded["blink"]!, sad: loaded["sad"]!,
-                     petted: loaded["petted"]!, front: loaded["front"]!, sleep: loaded["sleep"]!,
+                     petted: loaded["petted"]!, pettedDeep: loaded["petted_deep"]!,
                      fly: [loaded["fly_0"]!, loaded["fly_1"]!, loaded["fly_2"]!, loaded["fly_3"]!],
-                     hatSide: loaded["hat_side"]!, hatFront: loaded["hat_front"]!)
+                     peck: Sprite(named: "peck"), hatted: hatted)
     }
 
     private var keepPosition: CGPoint?
@@ -238,7 +245,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                   self.sim.needs.hunger <= 85 else { return }
             self.interaction.finish()
             let outcome = self.sim.feed()
-            self.perform(outcome, celebrateWith: .seed, count: 4)
+            self.perform(outcome, celebrateWith: .seed, count: 4,
+                         reacting: { self.driver.eat() })
             if outcome == .done {
                 self.driver.welcomeCursor()
             }
@@ -251,7 +259,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             self.driver.interactionTarget = nil
             self.driver.stay(for: 1)
             if earned {
-                self.perform(self.sim.play(), celebrateWith: .note, count: 4)
+                self.perform(self.sim.play(), celebrateWith: .note, count: 4,
+                             reacting: { self.driver.celebrate() })
                 self.store.save(self.sim.state)
             }
         }
@@ -289,11 +298,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     /// A refusal is shown on Coco herself, not by grey text in a menu.
+    ///
+    /// `reacting` is what she DOES when it worked. It used to be `faceTheHuman` for
+    /// every action, which is right for finishing a game and wrong for eating: taking
+    /// food and then looking up at you is a bird that has been handed something, not
+    /// one that has eaten it.
     private func perform(_ outcome: ActionOutcome,
-                         celebrateWith kind: ParticleField.Kind, count: Int) {
+                         celebrateWith kind: ParticleField.Kind, count: Int,
+                         reacting: () -> Void) {
         switch outcome {
         case .done:
-            driver.faceTheHuman()
+            reacting()
             particles.stagger(kind, count: count, at: emissionPoint)
             showMood()
         case .refused:
@@ -389,7 +404,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
 
         if view.sprite?.name != driver.frame.name { view.sprite = driver.frame }
-        if view.overlay?.name != driver.overlay?.name { view.overlay = driver.overlay }
         view.facingRight = driver.facingRight
 
         let origin = driver.displayPosition
@@ -464,9 +478,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let y = Int((frame.maxY - mouse.y) / s) - Canvas.particleHeadroom
         // The mask is stored facing right, so mirror the lookup when she faces left.
         if !driver.facingRight { x = Canvas.width - 1 - x }
-        let onCoco = view.sprite?.isOpaque(x: x, y: y) ?? false
-        let onHat = view.overlay?.isOpaque(x: x, y: y) ?? false
-        panel.ignoresMouseEvents = !(onCoco || onHat)
+        // One mask now, not two: the hat is drawn into the frame, so it is part of
+        // Coco's own alpha and the pixels under it are hers to click.
+        panel.ignoresMouseEvents = !(view.sprite?.isOpaque(x: x, y: y) ?? false)
     }
 
     private func showMood() {
@@ -505,7 +519,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let screen = (panel.screen ?? NSScreen.main ?? NSScreen.screens[0]).visibleFrame
 
         if wasClick, sim.pet(at: Date()) == .done {
-            driver.react(with: sprites.petted)
+            driver.acceptPetting()
             if sim.isBirthday(on: Date()) {
                 particles.burst(.confetti, count: 14, at: CGPoint(x: 32, y: 4))
             } else {

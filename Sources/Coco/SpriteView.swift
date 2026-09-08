@@ -1,11 +1,10 @@
 import AppKit
 
-/// Draws the stage: Coco on its floor, anything she wears over her, and the particles
-/// rising through the rows above her.
+/// Draws the stage: Coco on its floor, and the particles rising through the rows above
+/// her. There is no second layer for the party hat — it is baked into her frames, so
+/// the view has exactly one sprite to draw and one alpha mask to hit-test.
 final class SpriteView: NSView {
     var sprite: Sprite? { didSet { needsDisplay = true } }
-    /// Worn over the sprite — the party hat.
-    var overlay: Sprite? { didSet { needsDisplay = true } }
     /// Coco is drawn facing right and mirrored to face left, so no frame is drawn twice.
     var facingRight = true {
         didSet { if facingRight != oldValue { needsDisplay = true } }
@@ -48,14 +47,12 @@ final class SpriteView: NSView {
             ctx.translateBy(x: bounds.width, y: 0)
             ctx.scaleBy(x: -1, y: 1)
         }
-        for layer in [sprite, overlay].compactMap({ $0 }) {
-            layer.image.draw(in: spriteRect,
-                             from: .zero,
-                             operation: .sourceOver,
-                             fraction: 1.0,
-                             respectFlipped: true,
-                             hints: [.interpolation: NSImageInterpolation.none.rawValue])
-        }
+        sprite?.image.draw(in: spriteRect,
+                           from: .zero,
+                           operation: .sourceOver,
+                           fraction: 1.0,
+                           respectFlipped: true,
+                           hints: [.interpolation: NSImageInterpolation.none.rawValue])
         ctx.restoreGState()
 
         drawParticles(in: ctx)

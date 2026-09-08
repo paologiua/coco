@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Draw the birthday party hat.
+"""Draw the ORIGINAL birthday party hat — the symmetric cone.
+
+No longer the hat Coco wears. `Assets/hat-source.png` now holds a hat that was
+drawn onto her head by an image generator and lifted back out: it is shorter,
+tilted back, and its brim follows the curve of her skull, which the symmetric cone
+below never could. This script is kept because it is the only record of how the
+cone was built, and the fallback if the extracted hat is ever rejected.
 
 Drawn on the FULL 48x64 canvas rather than as a small patch with an anchor point:
 compositing then needs no coordinate maths and cannot drift between animations.
@@ -41,5 +47,5 @@ for y in range(H):
         else:
             rows.append(f"{x},{y}: (0,0,0,0)")
 txt = f"# ImageMagick pixel enumeration: {W},{H},255,srgba\n" + "\n".join(rows) + "\n"
-subprocess.run(["magick", "txt:-", "PNG32:Assets/Sprites/hat.png"], input=txt.encode(), check=True)
-print("Assets/Sprites/hat.png")
+subprocess.run(["magick", "txt:-", "PNG32:Assets/hat-source-cone.png"], input=txt.encode(), check=True)
+print("Assets/hat-source-cone.png")

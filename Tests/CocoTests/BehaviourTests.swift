@@ -15,8 +15,8 @@ struct BehaviourTests {
         image.unlockFocus()
         let sprite = try #require(Sprite(name: "fixture", source: image))
         let set = BehaviourDriver.SpriteSet(idle: sprite, blink: sprite, sad: sprite,
-                                           petted: sprite, front: sprite, sleep: sprite,
-                                           fly: [sprite], hatSide: sprite, hatFront: sprite)
+                                           petted: sprite, pettedDeep: sprite,
+                                           fly: [sprite], peck: sprite, hatted: [:])
         return BehaviourDriver(sim: sim, sprites: set,
                                canvasSize: CGSize(width: 128, height: 176), scale: 2,
                                start: CGPoint(x: 300, y: 400))
@@ -72,7 +72,7 @@ struct BehaviourTests {
 
         #expect(sim.feed() == .done)
         driver.interactionTarget = nil
-        driver.faceTheHuman()
+        driver.eat()
         driver.welcomeCursor()
         driver.tick(dt: 1.3, now: now.addingTimeInterval(1.3), cursor: hand, screen: screen)
         driver.tick(dt: 0.1, now: now.addingTimeInterval(1.4), cursor: hand, screen: screen)

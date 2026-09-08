@@ -60,14 +60,28 @@ final class BehaviourDriver {
     private var restUntil: Date = .distantPast
     private var bobPhase = 0.0
     private var facingBeforeReaction: Bool?
+    /// Set while the eating clip runs. The peck is a drawn head-down frame AND a dip of
+    /// the whole bird; the dip is the half that reads from across a room, and it is the
+    /// "eating dip" the animation player has claimed to have since ticket 09.
+    private var isPecking = false
     /// The mood the resting clip was built for. Mood changes while she is already
     /// resting have to be picked up, or she keeps the face she had when she sat down.
     private var restingMood: Mood?
 
     struct SpriteSet {
-        let idle, blink, sad, petted, front, sleep: Sprite
+        let idle, blink, sad, petted, pettedDeep: Sprite
         let fly: [Sprite]
-        let hatSide, hatFront: Sprite
+        /// Head down at the ground. Optional because the peck is half drawing and half
+        /// motion: without it the dip below still reads as eating, so a missing frame
+        /// costs polish rather than the animation.
+        let peck: Sprite?
+        /// The same poses with the party hat drawn in, keyed by the plain sprite's
+        /// name. Baked rather than laid over the frame at runtime: one `hat_side`
+        /// layer fitted the perched poses and floated a pixel or two clear of the
+        /// skull in every flight frame, and keeping a hand-written anchor per frame
+        /// is what made the hat not worth having. `scripts/make-hatted-sprites.py`
+        /// measures the anchor per frame instead, so a new animation costs nothing.
+        let hatted: [String: Sprite]
     }
 
     init(sim: Simulation, sprites: SpriteSet, canvasSize: CGSize, scale: Int, start: CGPoint) {
@@ -85,24 +99,19 @@ final class BehaviourDriver {
 
     // MARK: - Output
 
-    var frame: Sprite { animator.frame }
+    var frame: Sprite {
+        let base = animator.frame
+        // Asleep she wears nothing: a party hat on a sleeping bird reads as forgotten,
+        // not festive. A pose with no hatted twin simply goes bare-headed, which is
+        // what lets a new animation ship before its hat has been baked.
+        guard sim.isBirthday(on: Date()), behaviour != .sleeping,
+              let hatted = sprites.hatted[base.name] else { return base }
+        return hatted
+    }
 
     var bodyCentre: CGPoint {
         CGPoint(x: position.x + canvasSize.width / 2,
                 y: position.y + Double(Canvas.height) * scale / 2)
-    }
-
-    /// The hat, on the birthday only, matching whichever pose is showing.
-    var overlay: Sprite? {
-        guard sim.isBirthday(on: Date()) else { return nil }
-        // The hat is anchored per pose, and sleeping is the front-facing one. Asleep
-        // she wears nothing: a party hat on a sleeping bird reads as forgotten, not
-        // festive.
-        switch behaviour {
-        case .sleeping: return nil
-        case .reacting where animator.frame.name == "front": return sprites.hatFront
-        default: return sprites.hatSide
-        }
     }
 
     /// Where to actually put the window: the accumulated position plus the vertical bob
@@ -120,6 +129,10 @@ final class BehaviourDriver {
                 ? (sin(bobPhase * 6) > 0 ? 3 : 0)
                 : (sin(bobPhase * 1.6) > 0.7 ? 3 : 0)
         case .sleeping: return 0
+        // Negative is downwards: she stoops to the ground and comes back up. Twice the
+        // walk's amplitude, because a peck that moves as little as a footfall reads as
+        // a stumble rather than a bird taking food.
+        case .reacting: return isPecking && sin(bobPhase * 14) > 0 ? -6 : 0
         default:        return 0
         }
     }
@@ -214,6 +227,7 @@ final class BehaviourDriver {
             if animator.isFinished {
                 if let restore = facingBeforeReaction { facingRight = restore }
                 facingBeforeReaction = nil
+                isPecking = false
                 enter(.resting)
             }
             return
@@ -297,6 +311,9 @@ final class BehaviourDriver {
     // MARK: - Transitions
 
     private func enter(_ next: Behaviour) {
+        // Any transition out of the reaction ends the peck. Leaving it set would carry
+        // the dip into walking or flight, where it reads as a limp.
+        if next != .reacting { isPecking = false }
         behaviour = next
         switch next {
         case .resting:
@@ -355,10 +372,45 @@ final class BehaviourDriver {
         }
     }
 
-    /// A short pose that plays once and hands control back.
-    func react(with sprite: Sprite, seconds: Double = 1.2) {
+    /// A short clip that plays once and hands control back.
+    func react(with clip: Clip) {
         behaviour = .reacting
-        animator.play(Clip(frames: [sprite], fps: 1 / seconds, loops: false))
+        animator.play(clip)
+    }
+
+    /// A single pose held for a moment. Still the right shape for the reactions that
+    /// are a held expression rather than a movement — refusing, and looking up at the
+    /// human — so those do not have to pretend to be animations.
+    func react(with sprite: Sprite, seconds: Double = 1.2) {
+        react(with: Clip(frames: [sprite], fps: 1 / seconds, loops: false))
+    }
+
+    /// Eating: three pecks at the ground.
+    ///
+    /// Head-down and head-up alternating rather than a drawn arc between them. A bird's
+    /// peck snaps — it does not sweep — so the two states are the whole movement, and
+    /// two states are also all the generator can be trusted to register (ticket 01).
+    func eat() {
+        isPecking = true
+        let down = sprites.peck ?? sprites.idle
+        react(with: Clip(frames: [sprites.idle, down, down,
+                                  sprites.idle, down, down,
+                                  sprites.idle, down, down, sprites.idle],
+                         fps: 7, loops: false))
+    }
+
+    /// Being petted: eyes closing and scrunching, twice, then opening.
+    ///
+    /// The eye is four pixels, so the animation is built from the states that read
+    /// differently at this size rather than from an even interpolation between open
+    /// and shut — a drawn half-way frame is indistinguishable from `blink`. Two
+    /// scrunches rather than one: a single squeeze reads as a long blink.
+    func acceptPetting() {
+        react(with: Clip(frames: [sprites.blink, sprites.petted,
+                                  sprites.pettedDeep, sprites.pettedDeep, sprites.petted,
+                                  sprites.pettedDeep, sprites.pettedDeep, sprites.petted,
+                                  sprites.blink],
+                         fps: 7, loops: false))
     }
 
     /// Refusing is something Coco DOES: she turns her back for a moment. Greying out a
@@ -387,10 +439,16 @@ final class BehaviourDriver {
     /// does not appear beside an empty patch of screen while she is still on her way.
     var hasLanded: Bool { behaviour == .resting && target == nil }
 
-    /// The front-facing sprite, used when she should look at the human rather than
-    /// along the screen.
-    func faceTheHuman(seconds: Double = 1.2) {
-        react(with: sprites.front, seconds: seconds)
+    /// Pleased with herself — after a game she has just finished.
+    ///
+    /// This used to be a front-facing pose, turning to look at the human. The front
+    /// view is gone: it was the one drawing that could not be mirrored, it cost a
+    /// second silhouette to keep in step with every change to her design, and it read
+    /// as a different bird rather than the same bird turning round.
+    func celebrate() {
+        react(with: Clip(frames: [sprites.petted, sprites.pettedDeep, sprites.petted,
+                                  sprites.pettedDeep, sprites.blink, sprites.idle],
+                         fps: 6, loops: false))
     }
 
     /// The hand that has just fed her is welcome. Without this the ordinary

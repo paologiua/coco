@@ -82,4 +82,11 @@ The birthday appearance: the **Hat** worn over every frame, a festive resting an
 
 A **Sprite** is one 48x48 image of Coco. A **Frame** is one Sprite in an animation sequence. Coco is drawn facing right and mirrored when she faces left, so a Frame is never drawn twice.
 
-The **Hat** is an overlay Sprite drawn on top of any Frame at a fixed anchor on Coco's head, so Party State costs one asset rather than a second copy of every animation.
+The **Hat** is drawn *into* the Frames rather than laid over them: every Sprite has a
+hatted twin, and Party State swaps the whole set. It was an overlay at a fixed anchor
+per pose family, which cost one asset instead of a second copy of every animation — but
+one anchor cannot serve poses that hold the head in different places, and it floated
+clear of the skull in all four flight Frames. The twins are generated, not drawn twice:
+`scripts/make-hatted-sprites.py` finds the head in each Frame by its violet cheek patch
+and places the hat against the crown, so a new animation costs nothing beyond re-running
+it. A Frame with no hatted twin simply goes bare-headed.
