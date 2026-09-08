@@ -11,16 +11,23 @@ import AppKit
 /// Everything — masks, hit tests, window size — is therefore expressed in canvas
 /// coordinates, never sprite ones.
 enum Canvas {
-    static let width = 64
+    /// Wider than it is tall, and only because of the wings. Drawn at the scale that
+    /// makes her head the same size as it is when she is perched — which is what stops
+    /// her looking like a smaller bird the moment she takes off — a spread wingbeat is
+    /// 81 pixels across. Height stays at 64: `bodyCentre` is derived from it, so a
+    /// taller canvas would put her "body" above her actual head and she would flee the
+    /// cursor from the wrong place.
+    static let width = 96
     static let height = 64
     static let size = NSSize(width: width, height: height)
 
     /// Rows above the canvas that only particles use — rising Zzz, hearts, confetti.
     ///
-    /// Deliberately NOT part of the canvas. Growing the canvas a third time would mean
-    /// re-cutting every sprite, every hat overlay and every flight frame; the stage is
-    /// simply taller than the canvas, with sprites pinned to its floor, so no asset
-    /// changes at all.
+    /// Deliberately NOT part of the canvas: the stage is simply taller than the canvas,
+    /// with sprites pinned to its floor. This used to be load-bearing, because growing
+    /// the canvas meant re-cutting every sprite by hand. It no longer is —
+    /// `import-sheets.py` regenerates the whole set from the drawn sheets — which is
+    /// why the width could be changed at all.
     static let particleHeadroom = 24
     static let stageHeight = height + particleHeadroom
 }

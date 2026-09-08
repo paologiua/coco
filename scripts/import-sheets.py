@@ -33,7 +33,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "Assets" / "Sprites"
-CANVAS = 64
+CANVAS_W = 96
+CANVAS_H = 64
 # The bird standing, in canvas pixels. The old perched sprites were 48 tall in a 64
 # canvas, and matching that keeps her the size she already was on screen.
 STAND_H = 48
@@ -92,7 +93,60 @@ def birds(path, rows):
     return found
 
 
+def head_metrics(path):
+    """(cheek centre, head area) of a rendered frame, or None.
+
+    The periwinkle cheek dot marks the head in any pose, and the bright yellow within
+    reach of it is the face — measured with a radius so the yellow-green on her body
+    does not join in and make a perched head look three times the size of a flying one.
+    """
+    out = run(["magick", str(path), "-depth", "8", "txt:-"])
+    px = {}
+    for line in out.splitlines()[1:]:
+        m = re.match(r"(\d+),(\d+): \([^)]*\)\s+#([0-9A-F]{8})", line)
+        if m and int(m.group(3)[6:8], 16) > 127:
+            px[(int(m.group(1)), int(m.group(2)))] = m.group(3)[:6]
+    def rgb(h):
+        return int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    # The party hat is blue-and-white striped, so a plain "find the periwinkle" search
+    # finds the HAT and reports her head up where the pom-pom is. A height threshold was
+    # tried and cannot separate them — her cheek sits 32% of the way down and the hat
+    # reaches 30% — so the blue is grouped into blobs and the LOWEST one wins. The cheek
+    # is always below the hat, whatever the pose.
+    blue = {q for q, c in px.items()
+            if (lambda C: C[2] > 140 and C[2] - C[1] > 25 and C[0] < 160)(rgb(c))}
+    if not blue:
+        return None
+    blobs, seen = [], set()
+    for start in blue:
+        if start in seen:
+            continue
+        group, stack = [], [start]
+        while stack:
+            q = stack.pop()
+            if q in seen or q not in blue:
+                continue
+            seen.add(q)
+            group.append(q)
+            x, y = q
+            stack += [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1),
+                      (x + 1, y + 1), (x - 1, y - 1), (x + 1, y - 1), (x - 1, y + 1)]
+        blobs.append(group)
+    cheek = max(blobs, key=lambda g: sum(y for _, y in g) / len(g))
+    cx = sum(x for x, _ in cheek) / len(cheek)
+    cy = sum(y for _, y in cheek) / len(cheek)
+    face = [q for q, c in px.items()
+            if (lambda C: C[0] > 200 and C[1] > 200 and C[2] < 110)(rgb(c))
+            and abs(q[0] - cx) <= 11 and abs(q[1] - cy) <= 11]
+    return (cx, cy), len(face)
+
+
+PERCHED = None
+AIR_K = {}
+
+
 def main():
+    global PERCHED
     source = Path(sys.argv[1]).expanduser() if len(sys.argv) > 1 else Path.home() / "Desktop"
     for sheet, spec in SHEETS.items():
         plain = {}
@@ -116,22 +170,15 @@ def main():
                 note = f"width-matched on frame {plain['index']}"
             widest = max(f["w"] for f in found)
             tallest = max(f["h"] for f in found)
-            if widest * scale > CANVAS:
-                scale = CANVAS / widest
+            if widest * scale > CANVAS_W:
+                scale = CANVAS_W / widest
                 note += f", shrunk to fit {widest}px"
             # One placement for the whole sheet, so frames cannot drift against each
             # other: the tail tip sits at a common left margin, the ground line at the
             # canvas floor.
-            x0 = (CANVAS - widest * scale) / 2
-            for name, f in zip(spec["names"], found):
-                if spec["anchor"] == "perch":
-                    # Tail tip to a common left margin, ground line to the floor.
-                    ax, target_x = f["x"], x0
-                    ay, target_y = f["y"] + f["h"], CANVAS - 1
-                else:
-                    # Mid-air: nothing is on the ground, so centre the body instead.
-                    ax, target_x = f["x"] + f["w"] / 2, CANVAS / 2
-                    ay, target_y = f["y"] + f["h"] / 2, CANVAS / 2
+            x0 = (CANVAS_W - widest * scale) / 2
+
+            def emit(name, f, scale, target_x, target_y, ax, ay):
                 cx0, cy0 = max(0, f["x"] - PAD), max(0, f["y"] - PAD)
                 crop = f"{f['w'] + 2 * PAD}x{f['h'] + 2 * PAD}+{cx0}+{cy0}"
                 # -extent's offset is the viewport origin in the scaled crop, so it is
@@ -142,8 +189,63 @@ def main():
                     "-crop", crop, "+repage",
                     "-filter", "Box", "-resize", f"{scale * 100:.4f}%",
                     "-background", "none", "-alpha", "set", "-gravity", "none",
-                    "-extent", f"{CANVAS}x{CANVAS}{vx:+.0f}{vy:+.0f}",
+                    "-extent", f"{CANVAS_W}x{CANVAS_H}{vx:+.0f}{vy:+.0f}",
                     "-alpha", "on", f"PNG32:{OUT / (name + suffix + '.png')}"])
+                return dict(cx0=cx0, cy0=cy0, vx=vx, vy=vy)
+
+            placed = {}
+            for name, f in zip(spec["names"], found):
+                if spec["anchor"] == "perch":
+                    # Tail tip to a common left margin, ground line to the floor.
+                    ax, target_x = f["x"], x0
+                    ay, target_y = f["y"] + f["h"], CANVAS_H - 1
+                else:
+                    # Provisional only; the calibration below replaces it.
+                    ax, target_x = f["x"] + f["w"] / 2, CANVAS_W / 2
+                    ay, target_y = f["y"] + f["h"] / 2, CANVAS_H / 2
+                placed[name] = emit(name, f, scale, target_x, target_y, ax, ay)
+
+            if spec["anchor"] == "air" and PERCHED:
+                # Flight, calibrated against the perched poses rather than measured on
+                # its own. Scaling a wingbeat by its bounding box makes her a smaller
+                # bird in the air — the wings inflate the box, so the body shrinks to
+                # fit — and centring each frame on its own box makes her bob up and
+                # down as the wings change span. Both are fixed by working from the
+                # HEAD: match its size, then pin it to where it sits when she is
+                # perched, which is also what made take-off seamless in the old set.
+                metrics = {}
+                for name in spec["names"]:
+                    m = head_metrics(OUT / f"{name}{suffix}.png")
+                    if m:
+                        metrics[name] = m
+                if metrics:
+                    if suffix == "" or AIR_K.get(sheet) is None:
+                        mean_area = sum(a for _, a in metrics.values()) / len(metrics)
+                        k = (PERCHED["area"] / mean_area) ** 0.5 if mean_area else 1.0
+                        AIR_K[sheet] = k
+                    else:
+                        # The hat covers part of the yellow head, so the hatted frames
+                        # measure smaller and would be scaled up to compensate — she
+                        # would fly a size larger on her birthday. Inherit instead.
+                        k = AIR_K[sheet]
+                    scale *= k
+                    for name, f in zip(spec["names"], found):
+                        if name not in metrics:
+                            continue
+                        (rcx, rcy), _ = metrics[name]
+                        prev = placed[name]
+                        # Recover where the head is in the source, then re-place it.
+                        src_cx = (rcx + prev["vx"]) / (scale / k) + prev["cx0"]
+                        src_cy = (rcy + prev["vy"]) / (scale / k) + prev["cy0"]
+                        emit(name, f, scale, PERCHED["cheek"][0], PERCHED["cheek"][1],
+                             src_cx, src_cy)
+                    note += f", head-matched to perched ({k:.3f}x)"
+
+            if sheet == "idle" and suffix == "":
+                m = head_metrics(OUT / "idle.png")
+                if m:
+                    PERCHED = dict(cheek=m[0], area=m[1])
+
             print(f"  {src.name}: {len(found)} frame(s), {note}, "
                   f"scale={scale:.4f}, box={widest}x{tallest}")
 
