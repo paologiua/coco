@@ -21,8 +21,35 @@ struct BehaviourTests {
                                            peck: Array(repeating: sprite, count: 8),
                                            hatted: [:])
         return BehaviourDriver(sim: sim, sprites: set,
-                               canvasSize: CGSize(width: 128, height: 176), scale: 2,
+                               canvasSize: CGSize(width: Double(Canvas.width * 2),
+                                                  height: Double(Canvas.stageHeight * 2)), scale: 2,
                                start: CGPoint(x: 300, y: 400))
+    }
+
+    @Test func corneredAgainstAnEdgeSheFleesPastTheHand() throws {
+        let sim = Simulation(state: .fresh(now: now))
+        let driver = try makeDriver(sim)
+        // Hard against the right edge, with the hand just inside her personal space to
+        // her left. "Away from the hand" is rightwards, where there is no room left:
+        // she arrives instantly, rests, is startled again, and flaps against the wall
+        // for as long as the hand stays there.
+        let wall = screen.maxX - Double(Canvas.width * 2)
+        driver.moveTo(CGPoint(x: wall, y: screen.minY))
+        driver.stay(for: 30)
+        let hand = CGPoint(x: driver.bodyCentre.x - 80, y: driver.bodyCentre.y)
+
+        var ticksToEscape = 0
+        for i in 0..<400 {
+            driver.tick(dt: 0.1, now: now.addingTimeInterval(Double(i) * 0.1),
+                        cursor: hand, screen: screen)
+            if hypot(driver.bodyCentre.x - hand.x, driver.bodyCentre.y - hand.y)
+                > BehaviourDriver.personalSpace {
+                ticksToEscape = i
+                break
+            }
+        }
+        #expect(ticksToEscape > 0, "never escaped at all")
+        #expect(ticksToEscape <= 15, "took \(ticksToEscape) ticks to get clear of the hand")
     }
 
     @Test func sleepFliesDownBeforeClosingEyes() throws {

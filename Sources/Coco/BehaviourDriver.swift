@@ -251,8 +251,18 @@ final class BehaviourDriver {
         guard behaviour == .resting || behaviour == .walking else { return false }
         let centre = bodyCentre
         guard hypot(centre.x - cursor.x, centre.y - cursor.y) < Self.personalSpace else { return false }
-        let away = cursor.x > centre.x ? screen.minX + 20 : screen.maxX - canvasSize.width - 20
-        flyTo(CGPoint(x: away, y: screen.minY + Double.random(in: 0...120)))
+        let leftEdge = screen.minX + 20
+        let rightEdge = max(leftEdge, screen.maxX - canvasSize.width - 20)
+        var away = cursor.x > centre.x ? leftEdge : rightEdge
+        // Away from the hand — unless she is already against that edge. Then "away" is
+        // a move of a few points, she lands still inside your reach, startles again,
+        // and beats her wings against the wall until a lucky escape height gets her
+        // clear: measured at up to 31 ticks of it. Cornered, she goes PAST you, which
+        // is what a real bird does.
+        if abs(away - position.x) < Self.personalSpace {
+            away = cursor.x > centre.x ? rightEdge : leftEdge
+        }
+        flyTo(CGPoint(x: away, y: screen.minY + Double.random(in: 0...(screen.height * 0.22))))
         return true
     }
 
@@ -266,8 +276,11 @@ final class BehaviourDriver {
         if roll < 0.55 {
             walkTo(x: nearbyX(in: screen))
         } else if roll < 0.8 {
+            // Height as a share of the screen, not a flat 200 points. She crosses up
+            // to 1300 points horizontally, so a fixed couple of hundred made every
+            // flight read as a shallow skim along the floor rather than flight.
             flyTo(CGPoint(x: edgeBiasedX(in: screen),
-                          y: screen.minY + Double.random(in: 0...200)))
+                          y: screen.minY + Double.random(in: 0...(screen.height * 0.38))))
         } else {
             rest(for: Double.random(in: 2...6))
         }
