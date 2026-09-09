@@ -28,6 +28,7 @@ through the peck cycle. The tail moves 7.
 """
 import re
 import subprocess
+import tempfile
 import sys
 from pathlib import Path
 
@@ -43,6 +44,23 @@ CANVAS_H = 88
 # canvas, and matching that keeps her the size she already was on screen.
 STAND_H = 48
 FUZZ = "25%"
+# A pixel is either there or it is not.
+ALPHA_THRESHOLD = "55%"
+# The locked palette, read off the drawn sheets and then curated: quantising alone
+# also proposed a couple of purples, which are not in the art at all — they are her
+# outline averaged with the magenta field along every edge. Left in, they would have
+# turned the outline pink.
+PALETTE = ["070B05", "0A2E07", "175B0C", "282618", "319816", "52AF1F", "54AC37",
+           "70CC1B", "94D926", "CFBC53", "E1ED1E", "FAFA0C", "E7E0A5", "F8F7EF",
+           "2594EF", "1369D3",
+           # The cere above her beak is a pale blue-grey, and it is the one part of her
+           # no green, cream or tan sits near: without these two it snapped to cream
+           # and she lost the soft edge between beak and face.
+           "BFDDD2", "87BBAC"]
+# The pom-pom, and nothing else on her, is red. Offering it to the plain frames gave
+# every one of them a scatter of red specks: edge pixels that are part bird and part
+# magenta field land nearer to red than to anything she is actually made of.
+HAT_ONLY = ["E13B20"]
 PAD = 40        # source px kept around each bird, so loose seeds travel with the frame
 
 # `sidestep` exists on the Desktop and is deliberately absent: it is drawn but not
@@ -110,6 +128,43 @@ def birds(path, rows):
     band = height / rows
     found.sort(key=lambda f: (int(f["cy"] // band), f["cx"]))
     return found, rules
+
+
+def write_mask(rgba, mask, suffix):
+    """The silhouette: opaque where the pixel is art, transparent where it is halo.
+
+    Keying the magenta leaves a rim of pixels that are part bird and part background.
+    Averaging them away was what the old Box resize did for free — and what made
+    everything else soft. Sampling with Point keeps them intact instead, and the palette
+    then snaps each one to whichever locked colour it happens to sit nearest, which
+    scattered red and blue specks around every frame.
+
+    So they are judged here, on the small image, one at a time: a pixel survives if it
+    is closer to a colour in the palette than it is to the magenta field. That erodes
+    nothing — raising the key's fuzz until the specks went away took the party hat's
+    pom-pom with it, five pixels of twenty-three.
+    """
+    def rgb(h):
+        return int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    palette = [rgb(c) for c in PALETTE + (HAT_ONLY if suffix else [])]
+    field = (255, 0, 255)
+    out = run(["magick", rgba, "-depth", "8", "txt:-"])
+    rows = []
+    for line in out.splitlines()[1:]:
+        m = re.match(r"(\d+),(\d+): \([^)]*\)\s+#([0-9A-F]{8})", line)
+        if not m:
+            continue
+        x, y, hx = int(m.group(1)), int(m.group(2)), m.group(3)
+        keep = int(hx[6:8], 16) > 127
+        if keep:
+            c = rgb(hx[:6])
+            def d2(o):
+                return sum((c[i] - o[i]) ** 2 for i in range(3))
+            keep = min(d2(p) for p in palette) < d2(field)
+        rows.append(f"{x},{y}: ({'255,255,255' if keep else '0,0,0'},255)")
+    header = f"# ImageMagick pixel enumeration: {CANVAS_W},{CANVAS_H},255,srgba\n"
+    subprocess.run(["magick", "txt:-", mask],
+                   input=(header + "\n".join(rows) + "\n").encode(), check=True)
 
 
 def grid_rules(path):
@@ -190,9 +245,19 @@ PERCHED = None
 AIR_K = {}
 
 
+def write_palette(directory, colours, name):
+    """A locked palette as a one-pixel-tall strip, which is what -remap wants."""
+    path = f"{directory}/{name}.png"
+    run(["magick"] + [f"xc:#{c}" for c in colours] + ["+append", "-depth", "8", path])
+    return path
+
+
 def main():
     global PERCHED
     source = Path(sys.argv[1]).expanduser() if len(sys.argv) > 1 else SOURCE
+    palette_dir = tempfile.mkdtemp()
+    palettes = {"": write_palette(palette_dir, PALETTE, "plain"),
+                "_hat": write_palette(palette_dir, PALETTE + HAT_ONLY, "hat")}
     for sheet, spec in SHEETS.items():
         plain = {}
         for suffix in ("", "_hat"):
@@ -256,17 +321,33 @@ def main():
                 # the anchor minus where the anchor should land.
                 vx = (ax - cx0) * scale - target_x
                 vy = (ay - cy0) * scale - target_y
-                run(keyed(src) + [
-                    "-crop", crop, "+repage",
-                    "-filter", "Box", "-resize", f"{scale * 100:.4f}%",
-                    "-background", "none", "-alpha", "set", "-gravity", "none",
-                    "-extent", f"{CANVAS_W}x{CANVAS_H}{vx:+.0f}{vy:+.0f}",
+                out = OUT / (name + suffix + ".png")
+                with tempfile.TemporaryDirectory() as tmp:
+                    rgba = f"{tmp}/rgba.png"
+                    mask = f"{tmp}/mask.png"
+                    rgb = f"{tmp}/rgb.png"
+                    run(keyed(src) + [
+                        "-crop", crop, "+repage",
+                        "-filter", "Box", "-resize", f"{scale * 100:.4f}%",
+                        "-background", "none", "-alpha", "set", "-gravity", "none",
+                        "-extent", f"{CANVAS_W}x{CANVAS_H}{vx:+.0f}{vy:+.0f}",
+                        f"PNG32:{rgba}"])
+                    # Area-averaging a 1250 px sheet down to 112 leaves soft edges and
+                    # a thousand blended shades — a fifth of her pixels sat on a fuzzy
+                    # edge, which is what read as grain. The silhouette is cut hard and
+                    # the colours are snapped to the locked palette, which is what the
+                    # first pipeline did and what makes this pixel art rather than a
+                    # small photograph of pixel art. -remap drops alpha, so the mask is
+                    # carried separately and put back at the end.
+                    write_mask(rgba, mask, suffix)
+                    run(["magick", rgba, "-alpha", "off", "-dither", "None",
+                         "-remap", palettes[suffix], rgb])
                     # Stripped so a re-import is byte-identical when the art has not
-                    # changed. ImageMagick stamps a creation time into every PNG
-                    # otherwise, and all 52 frames show up as modified on every run,
-                    # which makes "did the drawing change?" unanswerable from a diff.
-                    "-alpha", "on", "-strip",
-                    f"PNG32:{OUT / (name + suffix + '.png')}"])
+                    # changed: ImageMagick stamps a creation time into every PNG, and
+                    # all 52 frames came back modified on every run.
+                    run(["magick", rgb, mask, "-alpha", "off",
+                         "-compose", "CopyOpacity", "-composite", "-strip",
+                         f"PNG32:{out}"])
                 return dict(cx0=cx0, cy0=cy0, vx=vx, vy=vy)
 
             placed = {}
