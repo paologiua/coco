@@ -37,11 +37,11 @@ OUT = ROOT / "Assets" / "Sprites"
 # from the Desktop, which meant the sprite set could only be regenerated on one
 # machine — the same trap as a hard-coded developer path in a bundle.
 SOURCE = ROOT / "Assets" / "Sheets"
-CANVAS_W = 192
-CANVAS_H = 144
+CANVAS_W = 176
+CANVAS_H = 132
 # The bird standing, in canvas pixels. The old perched sprites were 48 tall in a 64
 # canvas, and matching that keeps her the size she already was on screen.
-STAND_H = 88
+STAND_H = 80
 FUZZ = "25%"
 PAD = 40        # source px kept around each bird, so loose seeds travel with the frame
 

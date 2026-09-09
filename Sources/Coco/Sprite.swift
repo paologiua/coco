@@ -16,17 +16,17 @@ enum Canvas {
     /// away seven eighths of what the sheets hold and then made every surviving pixel
     /// twice as coarse — the graininess was that, not the conversion.
     ///
-    /// Wider than tall because of the wings: a spread wingbeat is 163 points across
-    /// and 132 tall, and this leaves a little margin around the widest of them.
-    static let width = 192
-    static let height = 144
+    /// Wider than tall because of the wings: a spread wingbeat is 148 points across
+    /// and 120 tall, and this leaves a little margin around the widest of them.
+    static let width = 176
+    static let height = 132
     static let size = NSSize(width: width, height: height)
 
     /// Rows above the canvas that only particles use — rising Zzz, hearts, confetti.
     ///
     /// Deliberately NOT part of the canvas: the stage is simply taller than the canvas,
     /// with sprites pinned to its floor. Kept at half her height, as it always was.
-    static let particleHeadroom = 44
+    static let particleHeadroom = 40
     static let stageHeight = height + particleHeadroom
 }
 
