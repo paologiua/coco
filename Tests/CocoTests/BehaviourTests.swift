@@ -30,8 +30,8 @@ struct BehaviourTests {
                                            peck: try many("peck", 8),
                                            hatted: [:])
         return BehaviourDriver(sim: sim, sprites: set,
-                               canvasSize: CGSize(width: Double(Canvas.width * 2),
-                                                  height: Double(Canvas.stageHeight * 2)), scale: 2,
+                               canvasSize: CGSize(width: Double(Canvas.width),
+                                                  height: Double(Canvas.stageHeight)), scale: 1,
                                start: CGPoint(x: 300, y: 400))
     }
 
@@ -77,7 +77,7 @@ struct BehaviourTests {
         // her left. "Away from the hand" is rightwards, where there is no room left:
         // she arrives instantly, rests, is startled again, and flaps against the wall
         // for as long as the hand stays there.
-        let wall = screen.maxX - Double(Canvas.width * 2)
+        let wall = screen.maxX - Double(Canvas.width)
         driver.moveTo(CGPoint(x: wall, y: screen.minY))
         driver.stay(for: 30)
         let hand = CGPoint(x: driver.bodyCentre.x - 80, y: driver.bodyCentre.y)
@@ -170,7 +170,9 @@ struct BehaviourTests {
         let away = CGPoint(x: hand.x + 400, y: hand.y)
         driver.tick(dt: 0.1, now: now.addingTimeInterval(9.1), cursor: away, screen: screen)
         driver.tick(dt: 0.1, now: now.addingTimeInterval(9.2), cursor: hand, screen: screen)
-        #expect(driver.behaviour == .flying)
+        // She leaves — on the wing or on foot, which she now chooses between. The point
+        // is that a fresh approach startles her again, not how she answers it.
+        #expect(driver.behaviour == .flying || driver.behaviour == .walking)
     }
 
     @Test func offeredFoodBroughtCloserDoesNotPushHerAway() throws {

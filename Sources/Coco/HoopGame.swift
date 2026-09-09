@@ -39,10 +39,13 @@ struct HoopGame {
                 let t = before / (before - after)
                 let crossingY = previousBird.y + t * (bird.y - previousBird.y)
                 crossedCentre = abs(crossingY - anchor.y) <= 22 * scale
+                // Scored here, as she goes through, rather than when she reaches the
+                // far side. The flight carries on for another half second after the
+                // ring, and a point that arrives then reads as unrelated to it.
+                if crossedCentre { passes += 1 }
             }
         }
         if hypot(bird.x - exit.x, bird.y - exit.y) <= 12 {
-            if crossedCentre { passes += 1 }
             entrySide *= -1
             crossing = false
             crossedCentre = false

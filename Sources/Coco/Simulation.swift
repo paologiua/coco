@@ -52,7 +52,7 @@ final class Simulation {
     var needs: Needs { state.needs }
     var mood: Mood { Mood.derived(from: state.needs) }
     var sleep: SleepState { state.sleep }
-    var canFeed: Bool { state.sleep == .awake && state.needs.hunger <= 85 }
+    var canFeed: Bool { state.sleep == .awake && state.needs.hunger < 100 }
 
     init(state: SavedState) {
         self.state = state
@@ -151,7 +151,10 @@ final class Simulation {
 
     func feed() -> ActionOutcome {
         if state.sleep != .awake { return .refused(.asleep) }
-        if state.needs.hunger > 85 { return .refused(.notHungry) }
+        // Refused only when she is actually full. It used to stop at 85, which is
+        // nine of the ten blocks in the menu bar: the last notch could never be filled
+        // and she read as permanently a little hungry.
+        if state.needs.hunger >= 100 { return .refused(.notHungry) }
         // One segment of the ten-block bar in the menu: a beakful, not a meal. Feeding
         // is meant to be something you do repeatedly rather than once a day.
         state.needs.hunger += 10

@@ -285,8 +285,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if kind == .hoop {
             // The hoop is a moving target: she keeps chasing it for as long as it is up.
             driver.interactionStyle = .chase
+            // The hoop is drawn at prop scale, so the game has to measure in the same
+            // units. Handing it Coco's scale — now 1 — made the opening it looked for
+            // half the size of the one on screen, and she kept missing a ring she was
+            // visibly flying through.
             driver.interactionTarget = hoopGame.target(bird: driver.bodyCentre, hoop: mouse,
-                                                       scale: Double(scale))
+                                                       scale: Double(Self.propScale))
             interaction.passes = hoopGame.passes
             if hoopGame.passes >= 3 { interaction.finish(completed: true) }
             return
@@ -488,7 +492,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if !driver.facingRight { x = Canvas.width - 1 - x }
         // One mask now, not two: the hat is drawn into the frame, so it is part of
         // Coco's own alpha and the pixels under it are hers to click.
-        panel.ignoresMouseEvents = !(view.sprite?.isOpaque(x: x, y: y) ?? false)
+        // A little slack around her outline. Hitting the exact pixel of a thin tail or
+        // a foot is a game of its own, and the window is invisible either way.
+        panel.ignoresMouseEvents = !(view.sprite?.isOpaque(x: x, y: y, slack: 3) ?? false)
     }
 
     private func showMood() {
@@ -515,7 +521,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func dragTo(_ mouse: NSPoint) {
         guard let offset = grabOffset else { return }
         let origin = NSPoint(x: mouse.x - offset.width, y: mouse.y - offset.height)
-        driver.moveTo(origin)
+        // The driver thinks in feet, the window in frames, and they differ by the
+        // margin kept below her for wingtips.
+        driver.moveTo(CGPoint(x: origin.x, y: origin.y + Double(Canvas.floorMargin)))
         panel.setFrameOrigin(origin)
     }
 

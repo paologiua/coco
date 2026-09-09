@@ -18,15 +18,23 @@ enum Canvas {
     ///
     /// Wider than tall because of the wings: a spread wingbeat is 148 points across
     /// and 120 tall, and this leaves a little margin around the widest of them.
-    static let width = 176
-    static let height = 132
+    static let width = 208
+    static let height = 168
     static let size = NSSize(width: width, height: height)
 
     /// Rows above the canvas that only particles use — rising Zzz, hearts, confetti.
     ///
     /// Deliberately NOT part of the canvas: the stage is simply taller than the canvas,
     /// with sprites pinned to its floor. Kept at half her height, as it always was.
-    static let particleHeadroom = 40
+    /// Points below her feet that belong to the canvas but not to the ground.
+    ///
+    /// A wing at the bottom of its beat dips under the line she stands on, which is
+    /// what a flying bird's wing does. Without this the flight frames had to be slid up
+    /// to fit inside the canvas, and that put her head 21 points above where it sits
+    /// when she is perched: every take-off became a hop.
+    static let floorMargin = 26
+
+    static let particleHeadroom = 41
     static let stageHeight = height + particleHeadroom
 }
 
@@ -70,9 +78,19 @@ struct Sprite {
     }
 
     /// True if this layer is drawn at the given canvas pixel, origin top-left.
-    func isOpaque(x: Int, y: Int) -> Bool {
-        guard x >= 0, y >= 0, x < Canvas.width, y < Canvas.height else { return false }
-        return opaque[y * Canvas.width + x]
+    ///
+    /// `slack` widens the answer by that many pixels in each direction, for hit testing:
+    /// she is one point per pixel now, so asking for the exact pixel means asking the
+    /// human to hit a tail three points wide.
+    func isOpaque(x: Int, y: Int, slack: Int = 0) -> Bool {
+        for dy in -slack...slack {
+            for dx in -slack...slack {
+                let px = x + dx, py = y + dy
+                guard px >= 0, py >= 0, px < Canvas.width, py < Canvas.height else { continue }
+                if opaque[py * Canvas.width + px] { return true }
+            }
+        }
+        return false
     }
 
     /// Compose the source onto a full canvas, anchored at the bottom, and read its

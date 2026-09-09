@@ -37,11 +37,15 @@ OUT = ROOT / "Assets" / "Sprites"
 # from the Desktop, which meant the sprite set could only be regenerated on one
 # machine — the same trap as a hard-coded developer path in a bundle.
 SOURCE = ROOT / "Assets" / "Sheets"
-CANVAS_W = 176
-CANVAS_H = 132
+CANVAS_W = 208
+CANVAS_H = 168
 # The bird standing, in canvas pixels. The old perched sprites were 48 tall in a 64
 # canvas, and matching that keeps her the size she already was on screen.
 STAND_H = 80
+# Points left below the ground line, for a wing that dips under where her feet stand.
+# Without it the flight frames had to be slid up to fit, which put her head 21 points
+# above where it sits when she is perched and made every take-off jump.
+FLOOR_MARGIN = 26
 FUZZ = "25%"
 PAD = 40        # source px kept around each bird, so loose seeds travel with the frame
 
@@ -274,48 +278,101 @@ def main():
                 if spec["anchor"] == "perch":
                     # Tail tip to a common left margin, ground line to the floor.
                     ax, target_x = f["x"], x0
-                    ay, target_y = f["y"] + f["h"], CANVAS_H - 1
+                    ay, target_y = f["y"] + f["h"], CANVAS_H - 1 - FLOOR_MARGIN
                 else:
                     # Provisional only; the calibration below replaces it.
                     ax, target_x = f["x"] + f["w"] / 2, CANVAS_W / 2
                     ay, target_y = f["y"] + f["h"] / 2, CANVAS_H / 2
                 placed[name] = emit(name, f, scale, target_x, target_y, ax, ay)
 
+            anchors_air = {}
             if spec["anchor"] == "air" and PERCHED:
                 # Flight, calibrated against the perched poses rather than measured on
                 # its own. Scaling a wingbeat by its bounding box makes her a smaller
                 # bird in the air — the wings inflate the box, so the body shrinks to
-                # fit — and centring each frame on its own box makes her bob up and
-                # down as the wings change span. Both are fixed by working from the
-                # HEAD: match its size, then pin it to where it sits when she is
-                # perched, which is also what made take-off seamless in the old set.
-                metrics = {}
-                for name in spec["names"]:
-                    m = head_metrics(OUT / f"{name}{suffix}.png")
-                    if m:
-                        metrics[name] = m
-                if metrics:
-                    if suffix == "" or AIR_K.get(sheet) is None:
-                        mean_area = sum(a for _, a in metrics.values()) / len(metrics)
-                        k = (PERCHED["area"] / mean_area) ** 0.5 if mean_area else 1.0
-                        AIR_K[sheet] = k
-                    else:
-                        # The hat covers part of the yellow head, so the hatted frames
-                        # measure smaller and would be scaled up to compensate — she
+                # fit — and centring each frame on its own box makes her bob as the
+                # wings change span. Both are fixed by working from the HEAD: match its
+                # size, then pin it where it sits when she is perched.
+                #
+                # Iterated, because one pass does not land it. The head is measured on
+                # the rendered frame, and re-rendering at the corrected scale moves
+                # which source pixels fall inside it, so the answer shifts a little
+                # each time. One pass left her flying 10% small.
+                for _ in range(6):
+                    metrics = {}
+                    for name in spec["names"]:
+                        got = head_metrics(OUT / f"{name}{suffix}.png")
+                        if got:
+                            metrics[name] = got
+                    if not metrics:
+                        break
+                    mean_area = sum(a for _, a in metrics.values()) / len(metrics)
+                    if not mean_area:
+                        break
+                    if suffix and AIR_K.get(sheet):
+                        # The hat covers part of her yellow head, so the hatted frames
+                        # measure smaller and would be scaled up to compensate: she
                         # would fly a size larger on her birthday. Inherit instead.
-                        k = AIR_K[sheet]
-                    scale *= k
+                        step = AIR_K[sheet] / (AIR_K.get(sheet + "_applied", 1.0) or 1.0)
+                        AIR_K[sheet + "_applied"] = AIR_K[sheet]
+                    else:
+                        step = (PERCHED["area"] / mean_area) ** 0.5
+                        AIR_K[sheet] = AIR_K.get(sheet, 1.0) * step
+                    if abs(step - 1) < 0.01:
+                        break
+                    scale *= step
                     for name, f in zip(spec["names"], found):
                         if name not in metrics:
                             continue
                         (rcx, rcy), _ = metrics[name]
                         prev = placed[name]
-                        # Recover where the head is in the source, then re-place it.
-                        src_cx = (rcx + prev["vx"]) / (scale / k) + prev["cx0"]
-                        src_cy = (rcy + prev["vy"]) / (scale / k) + prev["cy0"]
-                        emit(name, f, scale, PERCHED["cheek"][0], PERCHED["cheek"][1],
-                             src_cx, src_cy)
-                    note += f", head-matched to perched ({k:.3f}x)"
+                        src_cx = (rcx + prev["vx"]) / (scale / step) + prev["cx0"]
+                        src_cy = (rcy + prev["vy"]) / (scale / step) + prev["cy0"]
+                        anchors_air[name] = (src_cx, src_cy)
+                        placed[name] = emit(name, f, scale, PERCHED["cheek"][0],
+                                            PERCHED["cheek"][1], src_cx, src_cy)
+                # Then slide the whole sheet just far enough to fit. Her lower wing
+                # reaches well below her head in one of the four, and the head is
+                # anchored where it sits when she is perched, so the frame can hang off
+                # the canvas even when it would otherwise fit. One shift for the sheet,
+                # never per frame, or the registration this all exists to protect goes.
+                # Worked out from the source boxes and the transform, not measured on
+                # the rendered frames: a frame that already hangs off the canvas reads
+                # back clipped, so measuring it under-reports exactly the overhang the
+                # nudge exists to remove.
+                spans = []
+                for name, f in zip(spec["names"], found):
+                    if name not in anchors_air:
+                        continue
+                    cx, cy = anchors_air[name]
+                    tx, ty = PERCHED["cheek"]
+                    spans.append(((f["x"] - cx) * scale + tx,
+                                  (f["x"] + f["w"] - cx) * scale + tx,
+                                  (f["y"] - cy) * scale + ty,
+                                  (f["y"] + f["h"] - cy) * scale + ty))
+                if spans:
+                    left = min(a for a, _, _, _ in spans)
+                    right = max(b for _, b, _, _ in spans)
+                    top = min(c for _, _, c, _ in spans)
+                    bottom = max(d for _, _, _, d in spans)
+                    dx = dy = 0.0
+                    if right > CANVAS_W - 2:
+                        dx = (CANVAS_W - 2) - right
+                    if left + dx < 2:
+                        dx = 2 - left
+                    if bottom > CANVAS_H - 2:
+                        dy = (CANVAS_H - 2) - bottom
+                    if top + dy < 2:
+                        dy = 2 - top
+                    if abs(dx) > 0.5 or abs(dy) > 0.5:
+                        for name, f in zip(spec["names"], found):
+                            if name not in anchors_air:
+                                continue
+                            cx, cy = anchors_air[name]
+                            emit(name, f, scale, PERCHED["cheek"][0] + dx,
+                                 PERCHED["cheek"][1] + dy, cx, cy)
+                        note += f", nudged {dx:+.0f},{dy:+.0f} to fit"
+                note += f", head-matched to perched ({AIR_K.get(sheet, 1):.3f}x)"
 
             if sheet == "idle" and suffix == "":
                 m = head_metrics(OUT / "idle.png")

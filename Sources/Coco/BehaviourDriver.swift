@@ -17,6 +17,8 @@ enum Behaviour {
 final class BehaviourDriver {
     // Points per second.
     private static let walkSpeed = 34.0
+    /// Startled and on foot. Fast enough to read as alarm, slow enough to follow.
+    private static let runSpeed = 105.0
     private static let flySpeed = 150.0
     /// How close the cursor may come before she startles, and — the same distance,
     /// deliberately — how near the offered food may be before she stops chasing it and
@@ -60,6 +62,8 @@ final class BehaviourDriver {
     private var restUntil: Date = .distantPast
     private var bobPhase = 0.0
     private var facingBeforeReaction: Bool?
+    /// Set while she is escaping on foot: a scurry, not a stroll.
+    private var running = false
     /// The mood the resting clip was built for. Mood changes while she is already
     /// resting have to be picked up, or she keeps the face she had when she sat down.
     private var restingMood: Mood?
@@ -123,16 +127,22 @@ final class BehaviourDriver {
     /// Where to actually put the window: the accumulated position plus the vertical bob
     /// that stands in for drawn walk and breathing frames.
     var displayPosition: CGPoint {
-        CGPoint(x: position.x.rounded(), y: (position.y + bobOffset).rounded())
+        // `position` is where her feet are; the window reaches below that, so the frame
+        // sits lower than she does.
+        CGPoint(x: position.x.rounded(),
+                y: (position.y + bobOffset - Double(Canvas.floorMargin)).rounded())
     }
 
     private var bobOffset: Double {
         switch behaviour {
         case .resting:
             // On her birthday the breath becomes a bounce.
+            // Two points, not three. She is drawn at one point per pixel now, so what
+            // used to be a pixel and a half of breathing became three whole ones and
+            // read as floating rather than breathing.
             return sim.isBirthday(on: Date())
                 ? (sin(bobPhase * 6) > 0 ? 3 : 0)
-                : (sin(bobPhase * 1.6) > 0.7 ? 3 : 0)
+                : (sin(bobPhase * 1.6) > 0.7 ? 2 : 0)
         case .sleeping: return 0
         default:        return 0
         }
@@ -198,9 +208,13 @@ final class BehaviourDriver {
         if behaviour == .sleeping { enter(.resting) }
 
         if let point = interactionTarget {
-            let desired = CGPoint(x: min(max(point.x - canvasSize.width / 2, screen.minX),
+            // Where to put the WINDOW so that SHE lands on the point — not the middle
+            // of the canvas, which she does not occupy and which drifts from her as
+            // the wings change span.
+            let offset = CGPoint(x: bodyCentre.x - position.x, y: bodyCentre.y - position.y)
+            let desired = CGPoint(x: min(max(point.x - offset.x, screen.minX),
                                         max(screen.minX, screen.maxX - canvasSize.width)),
-                                  y: min(max(point.y - Double(Canvas.height) * scale / 2, screen.minY),
+                                  y: min(max(point.y - offset.y, screen.minY),
                                          max(screen.minY, screen.maxY - canvasSize.height)))
             // Once she has stopped beside the food she waits, and bringing the hand
             // closer must not move her: a standoff kept against an approaching cursor
@@ -242,7 +256,8 @@ final class BehaviourDriver {
 
         switch behaviour {
         case .walking, .flying:
-            let base = behaviour == .flying ? Self.flySpeed : Self.walkSpeed
+            let base = behaviour == .flying ? Self.flySpeed
+                                            : (running ? Self.runSpeed : Self.walkSpeed)
             advanceTowardsTarget(dt: dt, speed: sim.mood == .sad ? base * 0.65 : base)
         case .resting:
             if restingMood != sim.mood { enter(.resting) }
@@ -269,7 +284,16 @@ final class BehaviourDriver {
         if abs(away - position.x) < Self.personalSpace {
             away = cursor.x > centre.x ? rightEdge : leftEdge
         }
-        flyTo(CGPoint(x: away, y: screen.minY + Double.random(in: 0...(screen.height * 0.30))))
+        // Not always flight. A budgie startled on the ground as often scurries as it
+        // takes off, and a pet that answers every approach the same way stops reading
+        // as a decision. On foot she stays on the floor and covers less ground, which
+        // also makes her easier to catch up with if that was the point.
+        if Double.random(in: 0...1) < 0.4 {
+            running = true
+            walkTo(x: min(max(away, screen.minX), max(screen.minX, screen.maxX - canvasSize.width)))
+        } else {
+            flyTo(CGPoint(x: away, y: screen.minY + Double.random(in: 0...(screen.height * 0.30))))
+        }
         return true
     }
 
@@ -325,6 +349,7 @@ final class BehaviourDriver {
     // MARK: - Transitions
 
     private func enter(_ next: Behaviour) {
+        if next != .walking { running = false }
         behaviour = next
         switch next {
         case .resting:
@@ -365,6 +390,9 @@ final class BehaviourDriver {
     /// that made no visible difference; against a drawn step cycle it left her working
     /// her legs on the spot after she had stopped.
     private func rest(for seconds: Double) {
+        // Stopping ends the scurry. Without this the flag outlived the escape and every
+        // ordinary stroll afterwards was taken at a run.
+        running = false
         if behaviour != .resting { playRestingClip() }
         behaviour = .resting
         restUntil = Date().addingTimeInterval(seconds)
