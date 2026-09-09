@@ -24,7 +24,7 @@ they sound: with her head down at the ground the lowest pixels ARE the head, so 
 "bottom slice" heuristic tracked the beak and reported the anchor swinging 165 px
 through the peck cycle. The tail moves 7.
 
-    scripts/import-sheets.py [source-dir]        # default ~/Desktop
+    scripts/import-sheets.py [source-dir]        # default Assets/Sheets/
 """
 import re
 import subprocess
@@ -33,6 +33,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "Assets" / "Sprites"
+# The drawn sheets live in the repo, beside what they produce. They used to be read
+# from the Desktop, which meant the sprite set could only be regenerated on one
+# machine — the same trap as a hard-coded developer path in a bundle.
+SOURCE = ROOT / "Assets" / "Sheets"
 CANVAS_W = 112
 CANVAS_H = 88
 # The bird standing, in canvas pixels. The old perched sprites were 48 tall in a 64
@@ -150,7 +154,7 @@ AIR_K = {}
 
 def main():
     global PERCHED
-    source = Path(sys.argv[1]).expanduser() if len(sys.argv) > 1 else Path.home() / "Desktop"
+    source = Path(sys.argv[1]).expanduser() if len(sys.argv) > 1 else SOURCE
     for sheet, spec in SHEETS.items():
         plain = {}
         for suffix in ("", "_hat"):
@@ -217,7 +221,12 @@ def main():
                     "-filter", "Box", "-resize", f"{scale * 100:.4f}%",
                     "-background", "none", "-alpha", "set", "-gravity", "none",
                     "-extent", f"{CANVAS_W}x{CANVAS_H}{vx:+.0f}{vy:+.0f}",
-                    "-alpha", "on", f"PNG32:{OUT / (name + suffix + '.png')}"])
+                    # Stripped so a re-import is byte-identical when the art has not
+                    # changed. ImageMagick stamps a creation time into every PNG
+                    # otherwise, and all 52 frames show up as modified on every run,
+                    # which makes "did the drawing change?" unanswerable from a diff.
+                    "-alpha", "on", "-strip",
+                    f"PNG32:{OUT / (name + suffix + '.png')}"])
                 return dict(cx0=cx0, cy0=cy0, vx=vx, vy=vy)
 
             placed = {}
