@@ -12,7 +12,6 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
     private let monthPopup = NSPopUpButton()
     private let dayPopup = NSPopUpButton()
     private let loginCheck = NSButton(checkboxWithTitle: "Start Coco when I log in", target: nil, action: nil)
-    private let scalePopup = NSPopUpButton()
 
     /// Called with the new state so the app can persist it and react.
     var onChange: ((_ month: Int?, _ day: Int?, _ launchAtLogin: Bool, _ scale: Int) -> Void)?
@@ -23,7 +22,6 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         rebuildDays()
         if let day { dayPopup.selectItem(at: day - 1) }
         loginCheck.state = launchAtLogin ? .on : .off
-        scalePopup.selectItem(withTag: scale)
 
         // The app is .accessory, so it has to ask for activation explicitly — otherwise
         // the window appears behind whatever the human was using.
@@ -53,21 +51,10 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
         let birthdayRow = NSStackView(views: [label("Birthday"), monthPopup, dayPopup])
         birthdayRow.spacing = 8
 
-        for (title, tag) in [("Small", 1), ("Medium", 2), ("Large", 3)] {
-            let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
-            item.tag = tag
-            scalePopup.menu?.addItem(item)
-        }
-        scalePopup.target = self
-        scalePopup.action = #selector(changed)
-        let sizeRow = NSStackView(views: [label("Size"), scalePopup])
-        sizeRow.spacing = 8
-
         loginCheck.target = self
         loginCheck.action = #selector(changed)
 
         content.addArrangedSubview(birthdayRow)
-        content.addArrangedSubview(sizeRow)
         content.addArrangedSubview(loginCheck)
 
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 400, height: 180),
@@ -115,14 +102,15 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
     }
 
     @objc private func changed() {
-        let scale = scalePopup.selectedTag()
         applyLaunchAtLogin(loginCheck.state == .on)
         let month = monthPopup.indexOfSelectedItem
         let isSet = month > 0 && dayPopup.indexOfSelectedItem >= 0
         onChange?(isSet ? month : nil,
                   isSet ? dayPopup.indexOfSelectedItem + 1 : nil,
                   loginCheck.state == .on,
-                  scale == 0 ? 2 : scale)
+                  // One size now: she is stored at the size she is shown at, so there
+                  // is nothing to multiply and nothing to choose between.
+                  1)
     }
 
     /// Verified to work with an ad-hoc signature — the API requires a valid signature,

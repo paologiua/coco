@@ -11,24 +11,22 @@ import AppKit
 /// Everything — masks, hit tests, window size — is therefore expressed in canvas
 /// coordinates, never sprite ones.
 enum Canvas {
-    /// Wider than it is tall, and only because of the wings. Drawn at the scale that
-    /// makes her head the same size as it is when she is perched — which is what stops
-    /// her looking like a smaller bird the moment she takes off — a spread wingbeat is
-    /// 81 pixels across. Height stays at 64: `bodyCentre` is derived from it, so a
-    /// taller canvas would put her "body" above her actual head and she would flee the
-    /// cursor from the wrong place.
-    static let width = 112
-    static let height = 88
+    /// One canvas pixel is one point: Coco is drawn at the size she is shown at, with
+    /// no magnification. She used to be stored at 48 pixels and doubled, which threw
+    /// away seven eighths of what the sheets hold and then made every surviving pixel
+    /// twice as coarse — the graininess was that, not the conversion.
+    ///
+    /// Wider than tall because of the wings: a spread wingbeat is 163 points across
+    /// and 132 tall, and this leaves a little margin around the widest of them.
+    static let width = 192
+    static let height = 144
     static let size = NSSize(width: width, height: height)
 
     /// Rows above the canvas that only particles use — rising Zzz, hearts, confetti.
     ///
     /// Deliberately NOT part of the canvas: the stage is simply taller than the canvas,
-    /// with sprites pinned to its floor. This used to be load-bearing, because growing
-    /// the canvas meant re-cutting every sprite by hand. It no longer is —
-    /// `import-sheets.py` regenerates the whole set from the drawn sheets — which is
-    /// why the width could be changed at all.
-    static let particleHeadroom = 24
+    /// with sprites pinned to its floor. Kept at half her height, as it always was.
+    static let particleHeadroom = 44
     static let stageHeight = height + particleHeadroom
 }
 

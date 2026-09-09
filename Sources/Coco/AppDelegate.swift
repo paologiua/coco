@@ -4,7 +4,9 @@ import AppKit
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// Overridden by the saved setting. 2 is Medium: the 64x64 canvas drawn at 128
     /// points. This is the size the recipient meets Coco at, so it is the moderate one.
-    private static let defaultScale = 2
+    /// One size. She is stored at the size she is drawn, so there is nothing to
+    /// multiply — and nothing to choose between.
+    private static let defaultScale = 1
     private static let awakeHz = 10.0
     /// Asleep she has nowhere to be, but the Zzz still have to rise smoothly, so the
     /// loop slows rather than stopping. Hidden, there is genuinely nothing to draw.
@@ -45,6 +47,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var ticks = 0
     private var runningHz = AppDelegate.awakeHz
     private var scale = AppDelegate.defaultScale
+    /// Points per pixel for the things that are NOT Coco — the food, the hoop, her
+    /// particles. They are drawn at a coarser grain than she is, on purpose: they are
+    /// props, and at one point per pixel they would be specks.
+    static let propScale = 2
 
     // MARK: - Launch
 
@@ -59,7 +65,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         sawLongAbsence = sim.returnedFromLongAbsence
         store.save(sim.state)
 
-        scale = sim.state.scale ?? Self.defaultScale
+        scale = Self.defaultScale
         buildPanel()
         buildStatusItem()
         showMood()
@@ -266,7 +272,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 self.store.save(self.sim.state)
             }
         }
-        interaction.show(kind, seconds: 20, scale: scale)
+        interaction.show(kind, seconds: 20, scale: Self.propScale)
     }
 
     private func updateInteraction(dt: Double, screen: NSRect) {

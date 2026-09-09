@@ -80,7 +80,11 @@ The birthday appearance: the **Hat** worn over every frame, a festive resting an
 
 ## Sprite, Frame, Hat
 
-A **Sprite** is one 64x64 image of Coco. A **Frame** is one Sprite in an animation
+A **Sprite** is one 192x144 image of Coco, drawn at one point per pixel — the size
+she is shown at, with no magnification. She was stored at 48 pixels and doubled on
+screen, which discarded seven eighths of what the sheets hold and then made every
+surviving pixel twice as coarse; that, and not the conversion, was what made her look
+grainy. There is one size and no setting for it. A **Frame** is one Sprite in an animation
 sequence. Coco is drawn facing right and mirrored when she faces left, so a Frame is
 never drawn twice.
 

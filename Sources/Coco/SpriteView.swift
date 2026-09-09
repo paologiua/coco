@@ -64,9 +64,10 @@ final class SpriteView: NSView {
             particle.tint.withAlphaComponent(particle.fade).setFill()
             for (row, line) in rows.enumerated() {
                 for (column, character) in line.enumerated() where character == "#" {
+                    let pip = CGFloat(AppDelegate.propScale)
                     let rect = NSRect(x: (particle.position.x + Double(column)) * scale,
                                       y: (particle.position.y + Double(row)) * scale,
-                                      width: scale, height: scale)
+                                      width: pip, height: pip)
                     ctx.fill(rect)
                 }
             }
