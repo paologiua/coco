@@ -62,6 +62,10 @@ def run(args):
     return subprocess.run(args, capture_output=True, text=True, check=True).stdout
 
 
+def size(path):
+    return [int(v) for v in run(["magick", str(path), "-format", "%w %h", "info:"]).split()]
+
+
 def keyed(path):
     return ["magick", str(path), "-fuzz", FUZZ, "-transparent", "magenta", "-alpha", "set"]
 
@@ -90,13 +94,47 @@ def birds(path, rows):
             continue                                  # the empty field, not the art
         found.append(dict(w=w, h=h, x=x, y=y, cx=cx, cy=cy, area=area))
     if not found:
-        return []
+        return [], []
+    sheet_w, sheet_h = size(path)
+    # Rules between cells are not found this way: where they cross they form a single
+    # blob whose bounding box covers the whole sheet, so it is neither small enough to
+    # be debris nor thin enough to look like a line — and a box that size cannot act as
+    # a neighbour either. They are found by projection instead, below.
+    rules = grid_rules(path)
+    if not found:
+        return [], rules
     # Birds are all much of a size; seeds and motion ticks are an order smaller.
     biggest = max(f["area"] for f in found)
     found = [f for f in found if f["area"] > biggest * 0.25]
     height = max(f["y"] + f["h"] for f in found)
     band = height / rows
     found.sort(key=lambda f: (int(f["cy"] // band), f["cx"]))
+    return found, rules
+
+
+def grid_rules(path):
+    """Columns and rows that are drawn rules between cells, as one-pixel-wide boxes.
+
+    A rule runs the full height or width of the sheet, so it covers its whole column;
+    the bird covers at most a third of one. Averaging the alpha down to a single row
+    (and a single column) separates them cleanly and costs one resize each.
+    """
+    w, h = size(path)
+    found = []
+    for vertical in (True, False):
+        geometry = f"{w}x1!" if vertical else f"1x{h}!"
+        out = run(keyed(path) + ["-alpha", "extract", "-resize", geometry,
+                                 "-depth", "8", "txt:-"])
+        for line in out.splitlines()[1:]:
+            m = re.match(r"(\d+),(\d+): \((\d+)", line)
+            if not m:
+                continue
+            coverage = int(m.group(3)) / 255
+            if coverage < 0.8:
+                continue
+            i = int(m.group(1)) if vertical else int(m.group(2))
+            found.append(dict(x=i, y=0, w=1, h=h) if vertical
+                         else dict(x=0, y=i, w=w, h=1))
     return found
 
 
@@ -162,7 +200,7 @@ def main():
             if not src.exists():
                 print(f"  missing: {src}")
                 continue
-            found = birds(src, spec["rows"])
+            found, rules = birds(src, spec["rows"])
             if not found:
                 print(f"  {src.name}: nothing found")
                 continue
@@ -195,7 +233,9 @@ def main():
                 are not neighbours and still travel with their frame.
                 """
                 left = right = top = bottom = PAD
-                for o in found:
+                # Rules count as neighbours: the crop must stop before one, or it
+                # ships a hairline down the side of the frame.
+                for o in found + rules:
                     if o is f:
                         continue
                     if o["x"] + o["w"] <= f["x"]:
