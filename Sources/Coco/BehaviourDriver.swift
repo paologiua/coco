@@ -114,14 +114,36 @@ final class BehaviourDriver {
         return hatted
     }
 
-    /// Where she actually is on screen, taken from the frame being drawn rather than
-    /// from the middle of the canvas — which she does not occupy, and occupies less of
-    /// the taller the canvas has to be to hold her wings.
+    /// Where she actually is on screen.
+    ///
+    /// Taken from the RESTING pose, not the frame being drawn. Reading the current
+    /// frame sounds more correct and is much worse: in flight it moves with every
+    /// wingbeat, and the food and the hoop are aimed at this point, so the target
+    /// jittered under her, she never arrived inside the tolerance, and she hung in the
+    /// air flapping until the interaction timed out.
+    ///
+    /// The canvas keeps a margin below her feet for wingtips, so the floor of the
+    /// drawing is not the level she stands on; forgetting that aimed everything 26
+    /// points low and she flew under the hoop.
     var bodyCentre: CGPoint {
-        let centre = frame.drawnCentre
+        let centre = sprites.idle.drawnCentre
         let x = facingRight ? centre.x : Double(Canvas.width) - centre.x
         return CGPoint(x: position.x + x * scale,
-                       y: position.y + (Double(Canvas.height) - centre.y) * scale)
+                       y: position.y - Double(Canvas.floorMargin)
+                          + (Double(Canvas.height) - centre.y) * scale)
+    }
+
+    /// The band her body centre can actually be moved into on this screen.
+    ///
+    /// Not the screen: the window is wider than she is and is clamped to the screen, so
+    /// the leftmost her middle can get is the screen edge plus the gap between it and
+    /// her. Anything aiming her — the hoop's run-up especially — has to aim inside this
+    /// or it is asking for a place she cannot stand.
+    func reachableCentreX(in screen: NSRect) -> ClosedRange<Double> {
+        let offset = bodyCentre.x - position.x
+        let lo = screen.minX + offset
+        let hi = max(lo, screen.maxX - canvasSize.width + offset)
+        return lo...hi
     }
 
     /// Where to actually put the window: the accumulated position plus the vertical bob
@@ -483,6 +505,21 @@ final class BehaviourDriver {
         target = nil
         enter(.resting)
         rest(for: seconds)
+    }
+
+    /// Put down whatever she was doing and come back to the floor.
+    ///
+    /// Every interaction ends here, including the ones that end badly. A hoop held
+    /// where she has no room for the run-up asks her to reach a place she cannot stand,
+    /// and she will chase it for the full twenty seconds; without this she was then
+    /// left hanging wherever the timeout caught her, flapping in mid-air.
+    func settle(screen: NSRect) {
+        interactionTarget = nil
+        if position.y > screen.minY + 40 {
+            flyTo(CGPoint(x: position.x, y: screen.minY + Double.random(in: 0...30)))
+        } else {
+            stay(for: 1)
+        }
     }
 
     /// Arrive from off screen. Used once, on the very first launch.

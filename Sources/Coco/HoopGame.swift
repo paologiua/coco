@@ -10,22 +10,37 @@ struct HoopGame {
     private var crossedCentre = false
     private var previousBird: CGPoint?
 
-    mutating func target(bird: CGPoint, hoop: CGPoint, scale: Double) -> CGPoint {
+    /// `reach` is the band her middle can actually be moved into — narrower than the
+    /// screen, because the window is wider than she is. The run-up is 144 points long, so a hoop
+    /// held near an edge puts the approach off screen: she cannot get there, the driver
+    /// pins her to the edge, and she chases a point that does not exist until the game
+    /// times out. Held in the middle of the screen the same code works, which is why
+    /// this took a while to see.
+    mutating func target(bird: CGPoint, hoop: CGPoint, scale: Double,
+                         reach: ClosedRange<Double>? = nil) -> CGPoint {
         let clearance = 72 * scale
+        let lo = reach?.lowerBound ?? -Double.infinity
+        let hi = reach?.upperBound ?? Double.infinity
         if anchor == nil || hypot(hoop.x - anchor!.x, hoop.y - anchor!.y) > 8 * scale {
             anchor = hoop
-            entrySide = bird.x < hoop.x ? -1 : 1
+            // Approach from the side she is on, unless that side has no room for the
+            // run-up, in which case go round.
+            var side = bird.x < hoop.x ? -1.0 : 1.0
+            if hoop.x + side * clearance < lo || hoop.x + side * clearance > hi {
+                side *= -1
+            }
+            entrySide = side
             crossing = false
             crossedCentre = false
             previousBird = nil
         }
         guard let anchor else { return hoop }
-        let entry = CGPoint(x: anchor.x + entrySide * clearance, y: anchor.y)
-        let exit = CGPoint(x: anchor.x - entrySide * clearance, y: anchor.y)
+        let entry = CGPoint(x: min(max(anchor.x + entrySide * clearance, lo), hi), y: anchor.y)
+        let exit = CGPoint(x: min(max(anchor.x - entrySide * clearance, lo), hi), y: anchor.y)
         defer { previousBird = bird }
 
         if !crossing {
-            if hypot(bird.x - entry.x, bird.y - entry.y) <= 12 {
+            if hypot(bird.x - entry.x, bird.y - entry.y) <= 24 {
                 crossing = true
             } else {
                 return entry
@@ -45,7 +60,7 @@ struct HoopGame {
                 if crossedCentre { passes += 1 }
             }
         }
-        if hypot(bird.x - exit.x, bird.y - exit.y) <= 12 {
+        if hypot(bird.x - exit.x, bird.y - exit.y) <= 24 {
             entrySide *= -1
             crossing = false
             crossedCentre = false

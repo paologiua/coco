@@ -8,11 +8,22 @@ struct BehaviourTests {
     let screen = CGRect(x: 0, y: 0, width: 1000, height: 800)
 
     /// Named rather than interchangeable, so a test can tell which clip is playing.
-    func fixture(_ name: String) throws -> Sprite {
+    ///
+    /// `inset` shifts where the sprite is drawn inside the canvas. The flight frames
+    /// use it so that they do NOT all share a drawn centre: with one shape for every
+    /// frame, anything reading the current frame's geometry looks stable in a test and
+    /// swings with the wingbeat in the app.
+    func fixture(_ name: String, inset: CGFloat = 0) throws -> Sprite {
         let image = NSImage(size: Canvas.size)
         image.lockFocus()
         NSColor.green.setFill()
-        NSRect(origin: .zero, size: Canvas.size).fill()
+        // Anchored left, so a bigger inset moves the drawn CENTRE right. Insetting both
+        // sides leaves the centre where it was, which is exactly the jitter this needs
+        // to reproduce: the real flight frames' centres differ by about ten points
+        // across a wingbeat.
+        NSRect(x: inset, y: 0,
+               width: Canvas.size.width - inset,
+               height: Canvas.size.height).fill()
         image.unlockFocus()
         return try #require(Sprite(name: name, source: image))
     }
@@ -26,13 +37,104 @@ struct BehaviourTests {
                                            blink: try many("blink", 4),
                                            petted: try many("petted", 4),
                                            walk: try many("walk", 4),
-                                           fly: try many("fly", 4),
+                                           fly: try (0..<4).map {
+                                               try fixture("fly_\($0)", inset: CGFloat($0) * 12)
+                                           },
                                            peck: try many("peck", 8),
                                            hatted: [:])
         return BehaviourDriver(sim: sim, sprites: set,
                                canvasSize: CGSize(width: Double(Canvas.width),
                                                   height: Double(Canvas.stageHeight)), scale: 1,
                                start: CGPoint(x: 300, y: 400))
+    }
+
+    @Test func sheReachesOfferedFoodInsteadOfHangingInTheAir() throws {
+        let sim = Simulation(state: .fresh(now: now))
+        let driver = try makeDriver(sim)
+        // The food is aimed at her body. Reading that from the frame being drawn made
+        // it move with every wingbeat, so the target slid out from under her on each
+        // tick, she never landed inside the tolerance, and she hung there flapping.
+        driver.interactionTarget = CGPoint(x: 600, y: 300)
+
+        var arrived = false
+        for i in 0..<400 {
+            driver.tick(dt: 0.05, now: now.addingTimeInterval(Double(i) * 0.05),
+                        cursor: CGPoint(x: -9000, y: -9000), screen: screen)
+            if driver.behaviour != .flying { arrived = true; break }
+        }
+        #expect(arrived, "still flying after 20 seconds of chasing a fixed point")
+    }
+
+    @Test func offeredFoodSheSettlesBesideItRatherThanCirclingIt() throws {
+        let sim = Simulation(state: {
+            var state = SavedState.fresh(now: now)
+            state.needs.hunger = 40
+            return state
+        }())
+        let driver = try makeDriver(sim)
+        driver.interactionStyle = .waitBeside
+        let mouse = CGPoint(x: 700, y: 300)
+
+        // Exactly what the app does every tick while food is out: re-aim at a point
+        // beside the hand, on whichever side of it she currently is.
+        var settled = 0
+        for i in 0..<600 {
+            let side = driver.bodyCentre.x < mouse.x ? -1.0 : 1.0
+            driver.interactionTarget = CGPoint(x: mouse.x + side * 65, y: mouse.y)
+            driver.tick(dt: 0.05, now: now.addingTimeInterval(Double(i) * 0.05),
+                        cursor: mouse, screen: screen)
+            settled = driver.behaviour == .flying ? 0 : settled + 1
+            if settled > 20 { break }
+        }
+        #expect(settled > 20,
+                "never settled: still \(driver.behaviour) at \(Int(driver.position.x))")
+    }
+
+    @Test func theHoopIsPlayableInTheMiddleOfTheScreen() throws {
+        let sim = Simulation(state: .fresh(now: now))
+        let driver = try makeDriver(sim)
+        var game = HoopGame()
+        driver.interactionStyle = .chase
+        var scored = false
+        for i in 0..<1200 {
+            driver.interactionTarget = game.target(bird: driver.bodyCentre, hoop: CGPoint(x: 500, y: 400),
+                                                   scale: 2,
+                                                   reach: driver.reachableCentreX(in: screen))
+            driver.tick(dt: 0.05, now: now.addingTimeInterval(Double(i) * 0.05),
+                        cursor: CGPoint(x: -9000, y: -9000), screen: screen)
+            if game.passes >= 1 { scored = true; break }
+        }
+        #expect(scored, "non ha mai attraversato l'anello in 60 secondi")
+    }
+
+    @Test func anImpossibleHoopLeavesHerOnTheFloorNotInTheAir() throws {
+        // Held against an edge, the run-up is somewhere she cannot stand and the pass
+        // cannot be made at all. What must not happen is her being abandoned mid-air
+        // when the game gives up.
+        let sim = Simulation(state: .fresh(now: now))
+        let driver = try makeDriver(sim)
+        var game = HoopGame()
+        driver.interactionStyle = .chase
+        for i in 0..<400 {
+            driver.interactionTarget = game.target(bird: driver.bodyCentre, hoop: CGPoint(x: 60, y: 400),
+                                                   scale: 2,
+                                                   reach: driver.reachableCentreX(in: screen))
+            driver.tick(dt: 0.05, now: now.addingTimeInterval(Double(i) * 0.05),
+                        cursor: CGPoint(x: -9000, y: -9000), screen: screen)
+        }
+        let strandedAt = driver.position.y
+        driver.settle(screen: screen)
+        // Does she come DOWN — not where she happens to be twenty seconds later, by
+        // which time she may perfectly well have chosen to fly again.
+        var lowest = driver.position.y
+        for i in 0..<200 {
+            driver.tick(dt: 0.05, now: now.addingTimeInterval(20 + Double(i) * 0.05),
+                        cursor: CGPoint(x: -9000, y: -9000), screen: screen)
+            lowest = min(lowest, driver.position.y)
+        }
+        #expect(strandedAt > screen.minY + 60, "il caso non riproduce l'abbandono a mezz'aria")
+        #expect(lowest < screen.minY + 60,
+                "non e' mai tornata a terra: piu' in basso y=\(Int(lowest))")
     }
 
     @Test func arrivingSomewhereSheStopsWorkingHerLegs() throws {

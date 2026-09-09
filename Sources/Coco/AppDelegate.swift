@@ -264,8 +264,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             guard let self else { return }
             let earned = completed && self.interactionKind == .hoop && self.hoopGame.passes > 0
             self.interactionKind = nil
-            self.driver.interactionTarget = nil
-            self.driver.stay(for: 1)
+            let screen = (self.panel.screen ?? NSScreen.main ?? NSScreen.screens[0]).visibleFrame
+            self.driver.settle(screen: screen)
             if earned {
                 self.perform(self.sim.play(), celebrateWith: .note, count: 4,
                              reacting: { self.driver.celebrate() })
@@ -290,7 +290,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             // half the size of the one on screen, and she kept missing a ring she was
             // visibly flying through.
             driver.interactionTarget = hoopGame.target(bird: driver.bodyCentre, hoop: mouse,
-                                                       scale: Double(Self.propScale))
+                                                       scale: Double(Self.propScale),
+                                                       reach: driver.reachableCentreX(in: screen))
             interaction.passes = hoopGame.passes
             if hoopGame.passes >= 3 { interaction.finish(completed: true) }
             return
