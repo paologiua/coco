@@ -279,8 +279,9 @@ final class BehaviourDriver {
             // Height as a share of the screen, not a flat 200 points. She crosses up
             // to 1300 points horizontally, so a fixed couple of hundred made every
             // flight read as a shallow skim along the floor rather than flight.
+            // 45% was picked by eye against the real thing, not derived.
             flyTo(CGPoint(x: edgeBiasedX(in: screen),
-                          y: screen.minY + Double.random(in: 0...(screen.height * 0.38))))
+                          y: screen.minY + Double.random(in: 0...(screen.height * 0.45))))
         } else {
             rest(for: Double.random(in: 2...6))
         }
