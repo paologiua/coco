@@ -76,6 +76,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         guard let idle = load("idle"), let sad = load("sad"),
               let blink = sequence("blink", 4), let petted = sequence("petted", 4),
+              let walk = sequence("walk", 4),
               let fly = sequence("fly", 4), let peck = sequence("peck", 8)
         else { return nil }
 
@@ -83,11 +84,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // same name. They stay optional: a frame whose twin is missing goes bare-headed
         // on the day rather than stopping the app from starting.
         var hatted: [String: Sprite] = [:]
-        for frame in [idle, sad] + blink + petted + fly + peck {
+        for frame in [idle, sad] + blink + petted + walk + fly + peck {
             if let worn = load("\(frame.name)_hat") { hatted[frame.name] = worn }
         }
         return .init(idle: idle, sad: sad, blink: blink, petted: petted,
-                     fly: fly, peck: peck, hatted: hatted)
+                     walk: walk, fly: fly, peck: peck, hatted: hatted)
     }
 
     private var keepPosition: CGPoint?

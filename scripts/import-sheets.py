@@ -41,11 +41,14 @@ STAND_H = 48
 FUZZ = "25%"
 PAD = 40        # source px kept around each bird, so loose seeds travel with the frame
 
+# `sidestep` exists on the Desktop and is deliberately absent: it is drawn but not
+# wired to any behaviour, and importing it would ship frames nothing draws.
 SHEETS = {
     "idle":   dict(rows=1, anchor="perch", names=["idle"]),
     "sad":    dict(rows=1, anchor="perch", names=["sad"]),
     "blink":  dict(rows=2, anchor="perch", names=[f"blink_{i}" for i in range(4)]),
     "petted": dict(rows=2, anchor="perch", names=[f"petted_{i}" for i in range(4)]),
+    "walk":   dict(rows=1, anchor="perch", names=[f"walk_{i}" for i in range(4)]),
     "fly":    dict(rows=2, anchor="air",   names=[f"fly_{i}" for i in range(4)]),
     "pecked": dict(rows=2, anchor="perch", names=[f"peck_{i}" for i in range(8)]),
 }
@@ -178,9 +181,33 @@ def main():
             # canvas floor.
             x0 = (CANVAS_W - widest * scale) / 2
 
+            def margins(f):
+                """How far the crop may reach before it meets the next bird.
+
+                A flat margin caught the neighbour: the walk cycle's four frames sit
+                close together on the sheet, so 40 px around each one sliced a strip
+                off the bird beside it and shipped it as debris. Loose seeds and motion
+                ticks are small enough to have been filtered out of `found`, so they
+                are not neighbours and still travel with their frame.
+                """
+                left = right = top = bottom = PAD
+                for o in found:
+                    if o is f:
+                        continue
+                    if o["x"] + o["w"] <= f["x"]:
+                        left = min(left, max(0, f["x"] - (o["x"] + o["w"]) - 2))
+                    if o["x"] >= f["x"] + f["w"]:
+                        right = min(right, max(0, o["x"] - (f["x"] + f["w"]) - 2))
+                    if o["y"] + o["h"] <= f["y"]:
+                        top = min(top, max(0, f["y"] - (o["y"] + o["h"]) - 2))
+                    if o["y"] >= f["y"] + f["h"]:
+                        bottom = min(bottom, max(0, o["y"] - (f["y"] + f["h"]) - 2))
+                return left, right, top, bottom
+
             def emit(name, f, scale, target_x, target_y, ax, ay):
-                cx0, cy0 = max(0, f["x"] - PAD), max(0, f["y"] - PAD)
-                crop = f"{f['w'] + 2 * PAD}x{f['h'] + 2 * PAD}+{cx0}+{cy0}"
+                ml, mr, mt, mb = margins(f)
+                cx0, cy0 = max(0, f["x"] - ml), max(0, f["y"] - mt)
+                crop = f"{f['w'] + ml + mr}x{f['h'] + mt + mb}+{cx0}+{cy0}"
                 # -extent's offset is the viewport origin in the scaled crop, so it is
                 # the anchor minus where the anchor should land.
                 vx = (ax - cx0) * scale - target_x

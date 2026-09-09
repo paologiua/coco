@@ -17,6 +17,7 @@ struct BehaviourTests {
         let set = BehaviourDriver.SpriteSet(idle: sprite, sad: sprite,
                                            blink: Array(repeating: sprite, count: 4),
                                            petted: Array(repeating: sprite, count: 4),
+                                           walk: Array(repeating: sprite, count: 4),
                                            fly: Array(repeating: sprite, count: 4),
                                            peck: Array(repeating: sprite, count: 8),
                                            hatted: [:])

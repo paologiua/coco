@@ -70,6 +70,9 @@ final class BehaviourDriver {
         /// eye, so the whole blink is real animation.
         let blink: [Sprite]
         let petted: [Sprite]
+        /// A drawn step cycle. Walking used to be the resting pose slid sideways with
+        /// a one-pixel bob standing in for legs.
+        let walk: [Sprite]
         let fly: [Sprite]
         /// Eight frames: head down, beak to the ground, the seed taken, and back up.
         let peck: [Sprite]
@@ -125,7 +128,6 @@ final class BehaviourDriver {
 
     private var bobOffset: Double {
         switch behaviour {
-        case .walking:  return sin(bobPhase * 8) > 0 ? 3 : 0     // one canvas pixel at 3x
         case .resting:
             // On her birthday the breath becomes a bounce.
             return sim.isBirthday(on: Date())
@@ -333,7 +335,12 @@ final class BehaviourDriver {
             // change in how much she moves is what actually reads across a room.
             rest(for: sim.mood == .sad ? Double.random(in: 6...14) : Double.random(in: 2...6))
         case .walking:
-            animator.play(.still(sim.mood == .sad ? sprites.sad : sprites.idle))
+            // The drawn cycle carries the walk now, so the bob that used to stand in
+            // for legs is gone: run together they made her hop rather than step. The
+            // sad face is lost while she is moving, which is where the drooping eye
+            // read least anyway — her mood shows in how much she moves, and in the
+            // pose she settles back into.
+            animator.play(Clip(frames: sprites.walk, fps: 8, loops: true))
         case .flying, .dragged:
             animator.play(Clip(frames: sprites.fly, fps: 12, loops: true))
         case .sleeping:
