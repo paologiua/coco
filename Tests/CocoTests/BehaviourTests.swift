@@ -7,24 +7,67 @@ struct BehaviourTests {
     let now = Date()
     let screen = CGRect(x: 0, y: 0, width: 1000, height: 800)
 
-    func makeDriver(_ sim: Simulation) throws -> BehaviourDriver {
+    /// Named rather than interchangeable, so a test can tell which clip is playing.
+    func fixture(_ name: String) throws -> Sprite {
         let image = NSImage(size: Canvas.size)
         image.lockFocus()
         NSColor.green.setFill()
         NSRect(origin: .zero, size: Canvas.size).fill()
         image.unlockFocus()
-        let sprite = try #require(Sprite(name: "fixture", source: image))
-        let set = BehaviourDriver.SpriteSet(idle: sprite, sad: sprite,
-                                           blink: Array(repeating: sprite, count: 4),
-                                           petted: Array(repeating: sprite, count: 4),
-                                           walk: Array(repeating: sprite, count: 4),
-                                           fly: Array(repeating: sprite, count: 4),
-                                           peck: Array(repeating: sprite, count: 8),
+        return try #require(Sprite(name: name, source: image))
+    }
+
+    func makeDriver(_ sim: Simulation) throws -> BehaviourDriver {
+        func many(_ stem: String, _ count: Int) throws -> [Sprite] {
+            try (0..<count).map { try fixture("\(stem)_\($0)") }
+        }
+        let sprite = try fixture("idle")
+        let set = BehaviourDriver.SpriteSet(idle: sprite, sad: try fixture("sad"),
+                                           blink: try many("blink", 4),
+                                           petted: try many("petted", 4),
+                                           walk: try many("walk", 4),
+                                           fly: try many("fly", 4),
+                                           peck: try many("peck", 8),
                                            hatted: [:])
         return BehaviourDriver(sim: sim, sprites: set,
                                canvasSize: CGSize(width: Double(Canvas.width * 2),
                                                   height: Double(Canvas.stageHeight * 2)), scale: 2,
                                start: CGPoint(x: 300, y: 400))
+    }
+
+    @Test func arrivingSomewhereSheStopsWorkingHerLegs() throws {
+        let sim = Simulation(state: .fresh(now: now))
+        let driver = try makeDriver(sim)
+
+        // Walk somewhere and get there. Arriving calls `rest` directly rather than
+        // going through `enter`, so the walk cycle used to keep playing while she
+        // stood still — invisible while walking was the resting pose slid sideways.
+        var walked = false
+        for i in 0..<600 {
+            driver.tick(dt: 0.1, now: now.addingTimeInterval(Double(i) * 0.1),
+                        cursor: CGPoint(x: -5000, y: -5000), screen: screen)
+            if driver.behaviour == .walking { walked = true }
+            if walked && driver.behaviour == .resting { break }
+        }
+
+        #expect(walked, "she never walked, so the test proved nothing")
+        #expect(driver.behaviour == .resting)
+        #expect(!driver.frame.name.hasPrefix("walk"),
+                "still on \(driver.frame.name) after stopping")
+    }
+
+    @Test func walkUsesThreeFramesAndAlwaysRestarts() throws {
+        let sim = Simulation(state: .fresh(now: now))
+        let driver = try makeDriver(sim)
+        driver.moveTo(CGPoint(x: 400, y: screen.minY))
+        var seen: Set<String> = []
+        for i in 0..<600 {
+            driver.tick(dt: 0.05, now: now.addingTimeInterval(Double(i) * 0.05),
+                        cursor: CGPoint(x: -5000, y: -5000), screen: screen)
+            if driver.behaviour == .walking { seen.insert(driver.frame.name) }
+        }
+        #expect(seen.contains("walk_0"))
+        #expect(!seen.contains("walk_3"), "the closing frame is deliberately unused")
     }
 
     @Test func corneredAgainstAnEdgeSheFleesPastTheHand() throws {

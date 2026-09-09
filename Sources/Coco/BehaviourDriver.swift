@@ -328,9 +328,7 @@ final class BehaviourDriver {
         behaviour = next
         switch next {
         case .resting:
-            let calm = sim.mood == .sad ? sprites.sad : sprites.idle
-            animator.play(.breathing(calm, blink: sprites.blink))
-            restingMood = sim.mood
+            playRestingClip()
             // Sad Coco sits still for longer. The drooping eye is four pixels; the
             // change in how much she moves is what actually reads across a room.
             rest(for: sim.mood == .sad ? Double.random(in: 6...14) : Double.random(in: 2...6))
@@ -340,7 +338,11 @@ final class BehaviourDriver {
             // sad face is lost while she is moving, which is where the drooping eye
             // read least anyway — her mood shows in how much she moves, and in the
             // pose she settles back into.
-            animator.play(Clip(frames: sprites.walk, fps: 8, loops: true))
+            // Three of the four drawn frames, always restarting from the first: the
+            // fourth closes the cycle back towards the pose it started from, so
+            // playing it made the step read as a rock back and forth rather than as
+            // going somewhere.
+            animator.play(Clip(frames: Array(sprites.walk.prefix(3)), fps: 8, loops: true))
         case .flying, .dragged:
             animator.play(Clip(frames: sprites.fly, fps: 12, loops: true))
         case .sleeping:
@@ -350,7 +352,20 @@ final class BehaviourDriver {
         }
     }
 
+    private func playRestingClip() {
+        let calm = sim.mood == .sad ? sprites.sad : sprites.idle
+        animator.play(.breathing(calm, blink: sprites.blink))
+        restingMood = sim.mood
+    }
+
+    /// Stop, and stand there.
+    ///
+    /// The clip has to be swapped here and not only in `enter`, because arriving
+    /// somewhere calls this directly. While walking was the resting pose slid sideways
+    /// that made no visible difference; against a drawn step cycle it left her working
+    /// her legs on the spot after she had stopped.
     private func rest(for seconds: Double) {
+        if behaviour != .resting { playRestingClip() }
         behaviour = .resting
         restUntil = Date().addingTimeInterval(seconds)
     }
