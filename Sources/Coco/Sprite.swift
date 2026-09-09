@@ -17,8 +17,8 @@ enum Canvas {
     /// 81 pixels across. Height stays at 64: `bodyCentre` is derived from it, so a
     /// taller canvas would put her "body" above her actual head and she would flee the
     /// cursor from the wrong place.
-    static let width = 96
-    static let height = 64
+    static let width = 112
+    static let height = 88
     static let size = NSSize(width: width, height: height)
 
     /// Rows above the canvas that only particles use — rising Zzz, hearts, confetti.
@@ -40,6 +40,14 @@ struct Sprite {
     let image: NSImage
     /// Row-major, `Canvas.width * Canvas.height`, top-down. True where drawn.
     private let opaque: [Bool]
+    /// Centre of the drawn pixels in canvas coordinates, origin top-left.
+    ///
+    /// Not the centre of the canvas. Coco does not fill it — a perched bird sits in the
+    /// bottom half and a wingbeat reaches across most of the width — so assuming the
+    /// middle put her "body" in empty air above her head once the canvas grew tall
+    /// enough to hold spread wings, and she fled the cursor from a point she was not
+    /// standing at.
+    let drawnCentre: CGPoint
 
     init?(named name: String) {
         guard let url = Bundle.main.url(forResource: name, withExtension: "png", subdirectory: "Sprites"),
@@ -51,6 +59,16 @@ struct Sprite {
         guard let built = Sprite.pad(source) else { return nil }
         self.name = name
         (image, opaque) = built
+        var minX = Canvas.width, maxX = -1, minY = Canvas.height, maxY = -1
+        for y in 0..<Canvas.height {
+            for x in 0..<Canvas.width where opaque[y * Canvas.width + x] {
+                minX = min(minX, x); maxX = max(maxX, x)
+                minY = min(minY, y); maxY = max(maxY, y)
+            }
+        }
+        drawnCentre = maxX < 0
+            ? CGPoint(x: Double(Canvas.width) / 2, y: Double(Canvas.height) / 2)
+            : CGPoint(x: Double(minX + maxX) / 2, y: Double(minY + maxY) / 2)
     }
 
     /// True if this layer is drawn at the given canvas pixel, origin top-left.

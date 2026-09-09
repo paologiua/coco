@@ -107,9 +107,14 @@ final class BehaviourDriver {
         return hatted
     }
 
+    /// Where she actually is on screen, taken from the frame being drawn rather than
+    /// from the middle of the canvas — which she does not occupy, and occupies less of
+    /// the taller the canvas has to be to hold her wings.
     var bodyCentre: CGPoint {
-        CGPoint(x: position.x + canvasSize.width / 2,
-                y: position.y + Double(Canvas.height) * scale / 2)
+        let centre = frame.drawnCentre
+        let x = facingRight ? centre.x : Double(Canvas.width) - centre.x
+        return CGPoint(x: position.x + x * scale,
+                       y: position.y + (Double(Canvas.height) - centre.y) * scale)
     }
 
     /// Where to actually put the window: the accumulated position plus the vertical bob
@@ -262,7 +267,7 @@ final class BehaviourDriver {
         if abs(away - position.x) < Self.personalSpace {
             away = cursor.x > centre.x ? rightEdge : leftEdge
         }
-        flyTo(CGPoint(x: away, y: screen.minY + Double.random(in: 0...(screen.height * 0.22))))
+        flyTo(CGPoint(x: away, y: screen.minY + Double.random(in: 0...(screen.height * 0.30))))
         return true
     }
 

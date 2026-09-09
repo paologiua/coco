@@ -33,8 +33,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "Assets" / "Sprites"
-CANVAS_W = 96
-CANVAS_H = 64
+CANVAS_W = 112
+CANVAS_H = 88
 # The bird standing, in canvas pixels. The old perched sprites were 48 tall in a 64
 # canvas, and matching that keeps her the size she already was on screen.
 STAND_H = 48
