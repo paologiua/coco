@@ -69,6 +69,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         buildPanel()
         buildStatusItem()
         showMood()
+        // macOS can quietly bind a window to one desktop when it is ordered out and
+        // back in, and she is ordered out every time she is hidden. Re-stating it on
+        // every switch costs nothing and means a desktop she is missing from fixes
+        // itself the moment you arrive on it.
+        NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.activeSpaceDidChangeNotification,
+            object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self, !self.sim.state.hidden else { return }
+                self.panel.showEverywhere()
+            }
+        }
+
         startWelcomeIfNeeded()
         queueReunionIfNeeded()
         retime(to: Self.awakeHz)
@@ -115,7 +128,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         driver = BehaviourDriver(sim: sim, sprites: sprites,
                                  canvasSize: panel.frame.size, scale: scale, start: start)
         panel.setFrameOrigin(driver.displayPosition)
-        if !sim.state.hidden { panel.orderFrontRegardless() }
+        if !sim.state.hidden { panel.showEverywhere() }
     }
 
     /// The very first launch: she arrives from off screen rather than simply being
@@ -333,7 +346,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         interaction.finish()
         bubble.hide()
         sim.setHidden(!sim.state.hidden)
-        if sim.state.hidden { panel.orderOut(nil) } else { panel.orderFrontRegardless() }
+        if sim.state.hidden { panel.orderOut(nil) } else { panel.showEverywhere() }
         store.save(sim.state)
     }
 

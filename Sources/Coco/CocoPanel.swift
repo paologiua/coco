@@ -20,13 +20,28 @@ final class CocoPanel: NSPanel {
         isFloatingPanel = false
         level = .statusBar
 
-        collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary, .ignoresCycle]
+        collectionBehavior = Self.everywhere
         backgroundColor = .clear
         isOpaque = false
         hasShadow = false
         hidesOnDeactivate = false
         isMovableByWindowBackground = false
         isReleasedWhenClosed = false
+    }
+
+    /// Follow the human between desktops and sit over full-screen apps.
+    static let everywhere: NSWindow.CollectionBehavior =
+        [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary, .ignoresCycle]
+
+    /// Show her, and re-state where she is allowed to be.
+    ///
+    /// Ordering a window out and back in binds it to whichever desktop it was shown on:
+    /// after `Hide Coco` and `Show Coco` she stopped following between Spaces and was
+    /// simply absent from the others. Setting the behaviour again on the way in is what
+    /// puts her back everywhere.
+    func showEverywhere() {
+        collectionBehavior = Self.everywhere
+        orderFrontRegardless()
     }
 
     // A panel that can never become key cannot hold a text insertion point. That is the
