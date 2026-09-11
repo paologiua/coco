@@ -46,6 +46,9 @@ struct Sprite {
     let image: NSImage
     /// Row-major, `Canvas.width * Canvas.height`, top-down. True where drawn.
     private let opaque: [Bool]
+    /// The drawn pixels' box in canvas coordinates, origin top-left. Particles are
+    /// emitted against it, so they stay beside her head whatever the canvas measures.
+    let drawnBounds: CGRect
     /// Centre of the drawn pixels in canvas coordinates, origin top-left.
     ///
     /// Not the centre of the canvas. Coco does not fill it — a perched bird sits in the
@@ -75,6 +78,10 @@ struct Sprite {
         drawnCentre = maxX < 0
             ? CGPoint(x: Double(Canvas.width) / 2, y: Double(Canvas.height) / 2)
             : CGPoint(x: Double(minX + maxX) / 2, y: Double(minY + maxY) / 2)
+        drawnBounds = maxX < 0
+            ? CGRect(x: 0, y: 0, width: Double(Canvas.width), height: Double(Canvas.height))
+            : CGRect(x: Double(minX), y: Double(minY),
+                     width: Double(maxX - minX + 1), height: Double(maxY - minY + 1))
     }
 
     /// True if this layer is drawn at the given canvas pixel, origin top-left.

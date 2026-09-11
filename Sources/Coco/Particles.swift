@@ -22,6 +22,10 @@ final class ParticleField {
 
     private(set) var particles: [Particle] = []
     private var zzzClock = 0.0
+    /// Points per particle pixel. They are marks beside her, not part of her, so they
+    /// keep a coarser grain than she has.
+    static let pip = 3
+
     private var queue: [(kind: Kind, origin: CGPoint)] = []
     private var queueClock = 0.0
     private static let queueInterval = 0.26
@@ -41,13 +45,19 @@ final class ParticleField {
         }
         // Confetti falls; everything else rises. The stage's origin is top-left, so
         // rising means a negative dy.
-        let dy = kind == .confetti ? Double.random(in: 6...16) : -Double.random(in: 7...11)
+        // Distances are in stage points, and a point used to be half a pixel: these
+        // were written when the stage was drawn at 2x, so at 1x every mark drifted half
+        // as far and half as fast beside a Coco who had grown. They scale with the pip.
+        let unit = Double(ParticleField.pip)
+        let dy = kind == .confetti ? Double.random(in: 3...8) * unit
+                                   : -Double.random(in: 3.5...5.5) * unit
         // Scattered rather than identical: marks emitted from one point with one
         // velocity stack into a single thick mark and read as a rendering fault.
-        let origin = CGPoint(x: point.x + Double.random(in: -7...7),
-                             y: point.y + Double.random(in: -3...3))
+        let origin = CGPoint(x: point.x + Double.random(in: -3.5...3.5) * unit,
+                             y: point.y + Double.random(in: -1.5...1.5) * unit)
         particles.append(Particle(position: origin,
-                                  velocity: CGVector(dx: drift + Double.random(in: -5...5), dy: dy),
+                                  velocity: CGVector(dx: drift + Double.random(in: -2.5...2.5) * unit,
+                                                     dy: dy),
                                   age: 0,
                                   lifetime: (kind == .confetti ? 1.6 : 2.2) * Double.random(in: 0.8...1.2),
                                   kind: kind,
@@ -70,7 +80,7 @@ final class ParticleField {
         zzzClock += dt
         if zzzClock >= 1.4 {
             zzzClock = 0
-            emit(.zzz, at: point, drift: 3)
+            emit(.zzz, at: point, drift: Double(Self.pip))
         }
     }
 

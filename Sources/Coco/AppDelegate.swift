@@ -47,10 +47,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var ticks = 0
     private var runningHz = AppDelegate.awakeHz
     private var scale = AppDelegate.defaultScale
-    /// Points per pixel for the things that are NOT Coco — the food, the hoop, her
-    /// particles. They are drawn at a coarser grain than she is, on purpose: they are
-    /// props, and at one point per pixel they would be specks.
-    static let propScale = 2
+    /// Points per pixel for the things that are NOT Coco. They are drawn at a coarser
+    /// grain than she is on purpose: at one point per pixel they would be specks.
+    static let propScale = 3
+    /// The hoop gets its own, because it is the one prop she has to fit THROUGH. She is
+    /// 105 points across and 105 tall with her wings out; the ring was 48 by 128, so
+    /// the game was asking her to fly through something half her size. At this scale it
+    /// is 96 by 256 — comfortably around her — while the scoring tolerance stays
+    /// tighter than the opening, so she still has to go through the middle of it.
+    static let hoopScale = 4
 
     // MARK: - Launch
 
@@ -285,7 +290,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 self.store.save(self.sim.state)
             }
         }
-        interaction.show(kind, seconds: 20, scale: Self.propScale)
+        interaction.show(kind, seconds: 20,
+                         scale: kind == .hoop ? Self.hoopScale : Self.propScale)
     }
 
     private func updateInteraction(dt: Double, screen: NSRect) {
@@ -303,7 +309,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             // half the size of the one on screen, and she kept missing a ring she was
             // visibly flying through.
             driver.interactionTarget = hoopGame.target(bird: driver.bodyCentre, hoop: mouse,
-                                                       scale: Double(Self.propScale),
+                                                       scale: Double(Self.hoopScale),
                                                        reach: driver.reachableCentreX(in: screen))
             interaction.passes = hoopGame.passes
             if hoopGame.passes >= 3 { interaction.finish(completed: true) }
@@ -472,10 +478,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     /// Just above and beside her head, on whichever side she is facing, in stage
     /// pixels. Particles rise from here into the headroom.
-    private var emissionPoint: CGPoint {
-        CGPoint(x: driver.facingRight ? 46 : 13,
-                y: Double(Canvas.particleHeadroom) + 2)
-    }
+    private var emissionPoint: CGPoint { driver.emissionPoint }
 
     /// No permissions needed for this — unlike anything that inspects other apps.
     private func updateNapFromMachineIdle() {

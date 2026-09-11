@@ -133,6 +133,18 @@ final class BehaviourDriver {
                           + (Double(Canvas.height) - centre.y) * scale)
     }
 
+    /// Beside her head, in stage pixels, for particles to rise from.
+    ///
+    /// Derived from the drawing rather than written down: it was a pair of constants
+    /// measured against a 64-wide canvas, and when the canvas grew to 208 the marks
+    /// went on appearing where her head used to be — a third of the way across the
+    /// stage from her, hanging in empty space.
+    var emissionPoint: CGPoint {
+        let box = sprites.idle.drawnBounds
+        let x = facingRight ? box.maxX - box.width * 0.22 : box.minX + box.width * 0.22
+        return CGPoint(x: x, y: Double(Canvas.particleHeadroom) + box.minY)
+    }
+
     /// The band her body centre can actually be moved into on this screen.
     ///
     /// Not the screen: the window is wider than she is and is clamped to the screen, so
