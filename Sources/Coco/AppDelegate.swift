@@ -51,17 +51,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// grain than she is on purpose: at one point per pixel they would be specks.
     static let propScale = 3
     /// The hoop gets its own, because it is the one prop she has to fit THROUGH.
-    /// At this scale the ring stands 280 points tall with an opening 232 points high,
+    /// At this scale the ring stands 300 points tall with an opening 250 points high,
     /// against a bird 119 tall at full wingspan.
-    static let hoopScale = 4
+    ///
+    /// A whole number, and it has to be: the asset is stored at the grain the ring was
+    /// actually drawn at, so showing it is a plain pixel-doubling. Storing it at some
+    /// other grain means resampling by a fraction, and then some drawn blocks land on
+    /// one point and their neighbours on two — which is what made it look ragged.
+    static let hoopScale = 5
     /// Half the height of the hole through the ring, in points.
     ///
-    /// Measured from `hoop.png`: the opening is 58 of the asset's 70 rows. This is what
+    /// Measured from `hoop.png`: the opening is 50 of the asset's 60 rows. This is what
     /// the game scores against, and it has to be the HOLE rather than the image — most
     /// of the first asset was padding, and sizing the game by the image is what let her
     /// score for passing outside the ring. Re-measure it whenever the ring is redrawn:
     /// a thinner band means a bigger hole, and the number does not follow on its own.
-    static var hoopOpening: Double { 58.0 / 2 * Double(hoopScale) }
+    static var hoopOpening: Double { 50.0 / 2 * Double(hoopScale) }
 
     // MARK: - Launch
 
