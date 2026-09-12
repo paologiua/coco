@@ -549,13 +549,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         grabOffset = nil
         let screen = (panel.screen ?? NSScreen.main ?? NSScreen.screens[0]).visibleFrame
 
-        if wasClick, sim.pet(at: Date()) == .done {
+        guard wasClick else {
+            driver.endDrag(screen: screen)
+            return
+        }
+        let outcome = sim.pet(at: Date())
+
+        // The letter is offered on any stroke she is awake for, landed or not.
+        //
+        // It used to need a pet that counted, and that quietly gated the gift: petting
+        // is capped at sixty an hour and each stroke is worth eight, so eight clicks on
+        // the birthday put the letter out of reach for the rest of the hour — and the
+        // birthday is exactly the day someone sits there stroking her. The cap is a
+        // brake on a held-down mouse button farming affection; it has no business
+        // deciding whether she can be given her present.
+        if sim.isBirthday(on: Date()), outcome != .refused(.asleep) {
+            birthdayLetter.offer(on: screen)
+        }
+
+        if outcome == .done {
             driver.acceptPetting()
-            // On the birthday, every single stroke offers the letter again. It is one
-            // day a year and she can read it as often as she likes.
-            if sim.isBirthday(on: Date()) {
-                birthdayLetter.offer(on: screen)
-            }
             if sim.isBirthday(on: Date()) {
                 particles.burst(.confetti, count: 14, at: CGPoint(x: 32, y: 4))
             } else {

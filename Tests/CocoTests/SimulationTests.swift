@@ -258,6 +258,20 @@ struct SimulationTests {
         #expect(!s.isBirthday(on: after))
     }
 
+    @Test func theHourlyPettingCapRefusesWithoutSayingSheIsAsleep() {
+        // The birthday letter is offered on any stroke EXCEPT one refused because she is
+        // asleep, so the two refusals have to stay distinguishable: reaching the cap
+        // must not report itself as sleep, or eight clicks on the birthday would put
+        // the present out of reach for the rest of the hour.
+        let now = Date()
+        let s = sim { _ in }
+        var outcome = ActionOutcome.done
+        for _ in 0..<20 where outcome == .done { outcome = s.pet(at: now) }
+
+        #expect(outcome == .refused(.pettedEnough))
+        #expect(outcome != .refused(.asleep))
+    }
+
     // MARK: - Persistence
 
     @Test func stateSurvivesARoundTrip() throws {
