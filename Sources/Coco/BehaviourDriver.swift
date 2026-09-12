@@ -238,7 +238,7 @@ final class BehaviourDriver {
     }
 
     /// Where to actually put the window: the accumulated position plus the vertical bob
-    /// that stands in for drawn walk and breathing frames.
+    /// that stands in for drawn walk frames.
     var displayPosition: CGPoint {
         // `position` is where her feet are; the window reaches below that, so the frame
         // sits lower than she does.
@@ -246,19 +246,18 @@ final class BehaviourDriver {
                 y: (position.y + bobOffset - Double(Canvas.floorMargin)).rounded())
     }
 
+    /// Nothing at rest but the birthday bounce.
+    ///
+    /// There was a breath here: two points up and down on a slow cycle. It never read
+    /// as breathing, because none of it is drawn — a breath moves a chest, and this
+    /// moved her feet with it. AppKit snaps a window origin to whole points and she is
+    /// drawn at one point per pixel, so the smallest breath the window can carry is a
+    /// whole pixel of the whole bird, which reads as a twitch. Smoothing the curve made
+    /// it a smaller twitch, not a breath. She holds still between blinks instead, which
+    /// is what the blink clip is for. Anything better than that wants drawn frames.
     private var bobOffset: Double {
-        switch behaviour {
-        case .resting:
-            // On her birthday the breath becomes a bounce.
-            // Two points, not three. She is drawn at one point per pixel now, so what
-            // used to be a pixel and a half of breathing became three whole ones and
-            // read as floating rather than breathing.
-            return sim.isBirthday(on: Date())
-                ? (sin(bobPhase * 6) > 0 ? 3 : 0)
-                : (sin(bobPhase * 1.6) > 0.7 ? 2 : 0)
-        case .sleeping: return 0
-        default:        return 0
-        }
+        guard behaviour == .resting, sim.isBirthday(on: Date()) else { return 0 }
+        return sin(bobPhase * 6) > 0 ? 3 : 0
     }
 
     // MARK: - Tick
