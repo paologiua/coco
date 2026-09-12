@@ -9,9 +9,14 @@ struct SavedState: Codable {
     var lastUpdate: Date
     var sleep: SleepState
 
-    /// The rolling hour used to cap petting.
+    /// The rolling window used to cap petting.
     var pettingWindowStart: Date
     var pettingGivenInWindow: Double
+    /// How long this particular window lasts, in seconds. Chosen afresh each time one
+    /// opens, so she is not on a clock you could learn: sometimes she will take petting
+    /// again after five minutes, sometimes ten. Optional, like every field added after
+    /// v1 — an older state file must still decode.
+    var pettingWindowSeconds: Double?
 
     var firstLaunchDone: Bool
     /// Unused. It tracked the year the birthday speech bubble was last shown; the
@@ -45,6 +50,7 @@ struct SavedState: Codable {
                    sleep: .awake,
                    pettingWindowStart: now,
                    pettingGivenInWindow: 0,
+                   pettingWindowSeconds: nil,
                    firstLaunchDone: false,
                    lastBirthdayCelebrated: nil,
                    birthdayMonth: nil,

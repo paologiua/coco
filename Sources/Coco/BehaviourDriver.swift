@@ -350,12 +350,27 @@ final class BehaviourDriver {
         }
     }
 
+    /// Off she goes, whatever she happened to be doing. Used when she has had enough
+    /// petting: the hand is right there on top of her, so stopping would read as
+    /// sulking where leaving reads as a bird deciding it has had enough.
+    func flee(from point: CGPoint, in screen: NSRect) {
+        interactionTarget = nil
+        cursorIsWelcome = false
+        escape(from: point, in: screen)
+    }
+
     /// She takes off away from the cursor rather than merely stopping — a pet that
     /// freezes reads as broken, one that flees reads as alive.
     private func startled(by cursor: CGPoint, in screen: NSRect) -> Bool {
         guard behaviour == .resting || behaviour == .walking else { return false }
         let centre = bodyCentre
         guard hypot(centre.x - cursor.x, centre.y - cursor.y) < Self.personalSpace else { return false }
+        escape(from: cursor, in: screen)
+        return true
+    }
+
+    private func escape(from cursor: CGPoint, in screen: NSRect) {
+        let centre = bodyCentre
         let limit = originBounds(in: screen).x
         let leftEdge = limit.lowerBound + 20
         let rightEdge = max(leftEdge, limit.upperBound - 20)
@@ -378,7 +393,6 @@ final class BehaviourDriver {
         } else {
             flyTo(CGPoint(x: away, y: screen.minY + Double.random(in: 0...(screen.height * 0.30))))
         }
-        return true
     }
 
     private func decide(in screen: NSRect) {

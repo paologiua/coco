@@ -47,7 +47,24 @@ final class Simulation {
     /// far less than it used to, because a bar that empties in three hours gives you a
     /// reason to come back whatever you did a minute ago.
     static let petGain = 8.0
+    /// The most petting one window will take. The name says per hour and no longer
+    /// means it: a whole hour of being unable to touch her was a long punishment for
+    /// enthusiasm, and on her birthday it briefly hid the letter. The window is minutes
+    /// now, and the figure is what it always was — enough that ordinary affection is
+    /// never refused, low enough to stop a held-down mouse button.
     static let petCapPerHour = 60.0
+    /// The shortest and longest a petting window can last.
+    static let pettingWindowRange = 240.0...600.0
+
+    /// A fresh window length, so the wait is never the same twice and she cannot be
+    /// timed. Ten minutes at the outside; often less.
+    static func freshPettingWindow() -> Double { Double.random(in: pettingWindowRange) }
+
+    /// The window currently running, or a default for states written before windows had
+    /// a length of their own.
+    var currentPettingWindow: Double {
+        state.pettingWindowSeconds ?? Self.pettingWindowRange.upperBound
+    }
 
     var needs: Needs { state.needs }
     var mood: Mood { Mood.derived(from: state.needs) }
@@ -198,8 +215,9 @@ final class Simulation {
 
     func pet(at now: Date) -> ActionOutcome {
         if state.sleep != .awake { return .refused(.asleep) }
-        if now.timeIntervalSince(state.pettingWindowStart) >= 3600 {
+        if now.timeIntervalSince(state.pettingWindowStart) >= currentPettingWindow {
             state.pettingWindowStart = now
+            state.pettingWindowSeconds = Self.freshPettingWindow()
             state.pettingGivenInWindow = 0
         }
         if state.pettingGivenInWindow >= Self.petCapPerHour {

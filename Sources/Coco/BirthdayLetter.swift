@@ -28,6 +28,13 @@ final class BirthdayLetter {
 
     private var invitation: NSPanel?
     private var letter: NSPanel?
+    /// A transparent sheet the size of the screen, sitting just under whichever panel
+    /// is up, so that a click anywhere else dismisses it.
+    ///
+    /// A catcher rather than a global event monitor: monitoring the mouse outside our
+    /// own windows is the sort of thing that asks the human for Accessibility, and this
+    /// app is built not to ask for anything.
+    private var backdrop: NSPanel?
     private var invitationTimer: Timer?
     private var animationTimer: Timer?
 
@@ -47,6 +54,7 @@ final class BirthdayLetter {
         guard let image = Self.load("invitation", in: "LetterAnim") else { return }
 
         let size = Self.fit(image.size, into: CGSize(width: 460, height: 200))
+        showBackdrop(on: screen, level: 1) { [weak self] in self?.dismissInvitation() }
         let panel = Self.makePanel(size: size, on: screen, level: 2)
         panel.alphaValue = 1
         let view = ClickableImageView(frame: NSRect(origin: .zero, size: size))
@@ -82,6 +90,7 @@ final class BirthdayLetter {
         invitationTimer = nil
         invitation?.orderOut(nil)
         invitation = nil
+        if letter == nil { hideBackdrop() }
     }
 
     // MARK: - The letter
@@ -108,6 +117,7 @@ final class BirthdayLetter {
                                height: screen.height - Self.screenMargin * 2)
         let size = Self.fit(ink.size, into: available)
 
+        showBackdrop(on: screen, level: 1) { [weak self] in self?.close() }
         let panel = Self.makePanel(size: size, on: screen, level: 2)
         let view = LetterView(frame: NSRect(origin: .zero, size: size))
         view.frames = frames
@@ -148,10 +158,26 @@ final class BirthdayLetter {
         stopAnimation()
         letter?.orderOut(nil)
         letter = nil
+        hideBackdrop()
         // Nineteen frames at 1024 square is most of a hundred megabytes. It is worth
         // holding while she reads and not a moment longer.
         frames = []
         letterImage = nil
+    }
+
+    private func showBackdrop(on screen: NSRect, level: Int, onClick: @escaping () -> Void) {
+        hideBackdrop()
+        let panel = Self.makePanel(size: screen.size, on: screen, level: level)
+        let view = ClickableImageView(frame: NSRect(origin: .zero, size: screen.size))
+        view.onClick = onClick
+        panel.contentView = view
+        panel.orderFrontRegardless()
+        backdrop = panel
+    }
+
+    private func hideBackdrop() {
+        backdrop?.orderOut(nil)
+        backdrop = nil
     }
 
     // MARK: - Plumbing
