@@ -11,11 +11,15 @@ import AppKit
 final class BirthdayLetter {
     /// How long the invitation waits to be clicked before it gives up.
     private static let invitationSeconds = 7.0
-    /// Frames per second for the envelope opening. Slow enough to read the steps, fast
-    /// enough that nineteen frames do not outstay their welcome.
-    private static let fps = 12.0
-    /// The cross-fade from the last drawn frame into the readable letter.
-    private static let revealSeconds = 0.45
+    /// Frames per second for the envelope opening.
+    ///
+    /// Six, not twelve. At twelve the nineteen frames were over in a second and a half
+    /// — technically an animation and, watched, a flicker. This is a thing being handed
+    /// to someone, and it is allowed to take its time.
+    private static let fps = 6.0
+    /// The cross-fade from the last drawn frame into the readable letter. Longer than
+    /// a cut, so the letter arrives rather than appears.
+    private static let revealSeconds = 0.8
     /// Margin kept around the letter, so it does not touch the edges of the screen.
     private static let screenMargin = 24.0
 
