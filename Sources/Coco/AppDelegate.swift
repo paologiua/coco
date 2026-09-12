@@ -578,7 +578,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         } else if outcome == .refused(.pettedEnough) {
             // She has had enough, and says so and leaves rather than standing there
             // refusing while the hand is still on top of her.
-            particles.stagger(.huff, count: 2, at: emissionPoint)
+            particles.stagger(.refused, count: 2, at: emissionPoint)
             driver.flee(from: NSEvent.mouseLocation, in: screen)
         } else {
             // Refused too: ticket 10 turns that into her looking away.

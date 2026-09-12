@@ -7,7 +7,7 @@ import AppKit
 /// at draw time anyway.
 @MainActor
 final class ParticleField {
-    enum Kind { case zzz, heart, note, seed, confetti, huff }
+    enum Kind { case zzz, heart, note, seed, confetti, refused }
 
     struct Particle {
         var position: CGPoint       // stage pixels, origin top-left
@@ -51,7 +51,7 @@ final class ParticleField {
         case .note:     colour = NSColor(srgbRed: 0.910, green: 0.812, blue: 0.247, alpha: 1)
         case .seed:     colour = NSColor(srgbRed: 0.851, green: 0.769, blue: 0.549, alpha: 1)
         case .confetti: colour = Self.confettiColours.randomElement()!
-        case .huff:     colour = NSColor(srgbRed: 0.68, green: 0.80, blue: 0.90, alpha: 1)
+        case .refused:  colour = NSColor(srgbRed: 0.86, green: 0.18, blue: 0.13, alpha: 1)
         }
         // Confetti falls; everything else rises. The stage's origin is top-left, so
         // rising means a negative dy.
@@ -161,15 +161,18 @@ final class ParticleField {
         case .confetti:
             return ["##",
                     "##"]
-        case .huff:
-            // A cartoon bead of sweat: "that is enough now". Deliberately not an anger
-            // mark — nothing Coco does is meant to make anyone feel told off, and being
-            // fed up is not the same as being cross.
-            return ["..#..",
+        case .refused:
+            // A red cross: she has had enough petting for now.
+            //
+            // It was a bead of sweat first, which is the gentler mark and the wrong
+            // one: at fifteen points across nobody could tell what it was, and a sign
+            // that has to be explained is not a sign. A cross is read before it is
+            // thought about, which is the whole job.
+            return ["#...#",
+                    ".#.#.",
                     "..#..",
-                    ".###.",
-                    "#####",
-                    ".###."]
+                    ".#.#.",
+                    "#...#"]
         }
     }
 }
