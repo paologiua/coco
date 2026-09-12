@@ -31,6 +31,30 @@ struct HoopGameTests {
         #expect(game.passes == 0)
     }
 
+    /// The bug this guards: the scoring band was a flat 22 against a ring whose own
+    /// half-height is 17.5, so a point was awarded for passing OUTSIDE the ring — the
+    /// counter went up while she visibly flew past it. The band has to stay inside the
+    /// drawing at every scale, or the reward stops matching the picture.
+    @MainActor
+    @Test func aPointIsNeverAwardedForPassingOutsideTheRing() {
+        #expect(HoopGame.scoringBand < HoopGame.ringHalfHeight)
+
+        for scale in [1.0, 2, 4, Double(AppDelegate.hoopScale)] {
+            var game = HoopGame()
+            // Cross level with the ring's rim rather than its middle: visibly not
+            // through it.
+            let missBy = HoopGame.ringHalfHeight * scale * 0.95
+            let run = 40 * scale
+            for point in [CGPoint(x: hoop.x - run, y: hoop.y),
+                          CGPoint(x: hoop.x - 8, y: hoop.y + missBy),
+                          CGPoint(x: hoop.x + 8, y: hoop.y + missBy),
+                          CGPoint(x: hoop.x + run, y: hoop.y)] {
+                _ = game.target(bird: point, hoop: hoop, scale: scale)
+            }
+            #expect(game.passes == 0, "ha segnato passando al bordo dell'anello a scala \(scale)")
+        }
+    }
+
     @Test func flyingOutsideOpeningDoesNotCount() {
         var game = HoopGame()
         for point in [CGPoint(x: 328, y: 300), CGPoint(x: 380, y: 400),

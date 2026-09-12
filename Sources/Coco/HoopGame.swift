@@ -3,6 +3,17 @@ import Foundation
 /// A pass starts outside one side and finishes outside the other. Moving the hoop
 /// during a pass resets the approach, so sweeping it over Coco cannot earn points.
 struct HoopGame {
+    /// The ring's geometry, in the units `hoop.png` is drawn in.
+    ///
+    /// Measured from the asset rather than guessed: the drawing is 12 by 35 inside a
+    /// 24 by 64 image, so more than half of it is padding. Sizing the game against the
+    /// image is what produced a hoop that looked generous and was not, and a scoring
+    /// tolerance of 22 — wider than the ring's own half-height of 17.5, so a point was
+    /// awarded for passing OUTSIDE the ring she was supposed to go through.
+    static let ringHalfHeight = 17.5
+    /// How near the middle she has to cross. Comfortably inside the ring, so the point
+    /// always comes with the picture of her going through it.
+    static let scoringBand = ringHalfHeight * 0.6
     private(set) var passes = 0
     private var anchor: CGPoint?
     private var entrySide = -1.0
@@ -18,7 +29,10 @@ struct HoopGame {
     /// this took a while to see.
     mutating func target(bird: CGPoint, hoop: CGPoint, scale: Double,
                          reach: ClosedRange<Double>? = nil) -> CGPoint {
-        let clearance = 72 * scale
+        // The run-up. 72 was written when the hoop was drawn at 2x, and at 6x it became
+        // 432 points — a third of the screen, most of it spent flying in from off in the
+        // distance, and far enough out to collide with the edges of her reach.
+        let clearance = 36 * scale
         let lo = reach?.lowerBound ?? -Double.infinity
         let hi = reach?.upperBound ?? Double.infinity
         if anchor == nil || hypot(hoop.x - anchor!.x, hoop.y - anchor!.y) > 8 * scale {
@@ -53,7 +67,7 @@ struct HoopGame {
             if before > 0, after <= 0 {
                 let t = before / (before - after)
                 let crossingY = previousBird.y + t * (bird.y - previousBird.y)
-                crossedCentre = abs(crossingY - anchor.y) <= 22 * scale
+                crossedCentre = abs(crossingY - anchor.y) <= Self.scoringBand * scale
                 // Scored here, as she goes through, rather than when she reaches the
                 // far side. The flight carries on for another half second after the
                 // ring, and a point that arrives then reads as unrelated to it.

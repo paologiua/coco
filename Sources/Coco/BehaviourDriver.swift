@@ -77,15 +77,17 @@ final class BehaviourDriver {
         /// A drawn step cycle. Walking used to be the resting pose slid sideways with
         /// a one-pixel bob standing in for legs.
         let walk: [Sprite]
+        /// Flight is anchored on the HEAD, so her body sits a little differently in the
+        /// air than at rest — about eight points, against a hoop two hundred tall.
+        /// Tracking that was tried and is not worth it: a body centre that changes when
+        /// she lands moves the target out from under her at the moment she arrives, so
+        /// she takes off again, and the hoop game spends its time landing and
+        /// relaunching instead of flying through anything.
         let fly: [Sprite]
         /// Eight frames: head down, beak to the ground, the seed taken, and back up.
         let peck: [Sprite]
         /// The same poses with the party hat drawn in, keyed by the plain sprite's
-        /// name. Baked rather than laid over the frame at runtime: one `hat_side`
-        /// layer fitted the perched poses and floated a pixel or two clear of the
-        /// skull in every flight frame, and keeping a hand-written anchor per frame
-        /// is what made the hat not worth having. `scripts/make-hatted-sprites.py`
-        /// measures the anchor per frame instead, so a new animation costs nothing.
+        /// name. The hat is part of the art now, so nothing is positioned at runtime.
         let hatted: [String: Sprite]
     }
 

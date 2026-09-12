@@ -13,7 +13,7 @@ struct BehaviourTests {
     /// use it so that they do NOT all share a drawn centre: with one shape for every
     /// frame, anything reading the current frame's geometry looks stable in a test and
     /// swings with the wingbeat in the app.
-    func fixture(_ name: String, inset: CGFloat = 0) throws -> Sprite {
+    func fixture(_ name: String, inset: CGFloat = 0, lift: CGFloat = 0) throws -> Sprite {
         let image = NSImage(size: Canvas.size)
         image.lockFocus()
         NSColor.green.setFill()
@@ -21,9 +21,9 @@ struct BehaviourTests {
         // sides leaves the centre where it was, which is exactly the jitter this needs
         // to reproduce: the real flight frames' centres differ by about ten points
         // across a wingbeat.
-        NSRect(x: inset, y: 0,
+        NSRect(x: inset, y: lift,
                width: Canvas.size.width - inset,
-               height: Canvas.size.height).fill()
+               height: Canvas.size.height - lift).fill()
         image.unlockFocus()
         return try #require(Sprite(name: name, source: image))
     }
@@ -38,7 +38,8 @@ struct BehaviourTests {
                                            petted: try many("petted", 4),
                                            walk: try many("walk", 4),
                                            fly: try (0..<4).map {
-                                               try fixture("fly_\($0)", inset: CGFloat($0) * 12)
+                                               try fixture("fly_\($0)", inset: CGFloat($0) * 12,
+                                                           lift: CGFloat($0) * 9)
                                            },
                                            peck: try many("peck", 8),
                                            hatted: [:])
@@ -98,7 +99,7 @@ struct BehaviourTests {
         var scored = false
         for i in 0..<1200 {
             driver.interactionTarget = game.target(bird: driver.bodyCentre, hoop: CGPoint(x: 500, y: 400),
-                                                   scale: 2,
+                                                   scale: Double(AppDelegate.hoopScale),
                                                    reach: driver.reachableCentreX(in: screen))
             driver.tick(dt: 0.05, now: now.addingTimeInterval(Double(i) * 0.05),
                         cursor: CGPoint(x: -9000, y: -9000), screen: screen)
@@ -117,7 +118,7 @@ struct BehaviourTests {
         driver.interactionStyle = .chase
         for i in 0..<400 {
             driver.interactionTarget = game.target(bird: driver.bodyCentre, hoop: CGPoint(x: 60, y: 400),
-                                                   scale: 2,
+                                                   scale: Double(AppDelegate.hoopScale),
                                                    reach: driver.reachableCentreX(in: screen))
             driver.tick(dt: 0.05, now: now.addingTimeInterval(Double(i) * 0.05),
                         cursor: CGPoint(x: -9000, y: -9000), screen: screen)
@@ -338,7 +339,11 @@ struct BehaviourTests {
         var game = HoopGame()
         let hoop = CGPoint(x: 500, y: 300)
         for tick in 0..<200 {
-            driver.interactionTarget = game.target(bird: driver.bodyCentre, hoop: hoop, scale: 2)
+            // The scale the app actually ships, not a convenient one: the run-up, the
+            // scoring band and the ring's size all derive from it.
+            driver.interactionTarget = game.target(bird: driver.bodyCentre, hoop: hoop,
+                                                   scale: Double(AppDelegate.hoopScale),
+                                                   reach: driver.reachableCentreX(in: screen))
             driver.tick(dt: 0.1, now: now.addingTimeInterval(Double(tick) / 10),
                         cursor: hoop, screen: screen)
             if game.passes == 3 { break }

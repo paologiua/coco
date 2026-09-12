@@ -50,12 +50,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// Points per pixel for the things that are NOT Coco. They are drawn at a coarser
     /// grain than she is on purpose: at one point per pixel they would be specks.
     static let propScale = 3
-    /// The hoop gets its own, because it is the one prop she has to fit THROUGH. She is
-    /// 105 points across and 105 tall with her wings out; the ring was 48 by 128, so
-    /// the game was asking her to fly through something half her size. At this scale it
-    /// is 96 by 256 — comfortably around her — while the scoring tolerance stays
-    /// tighter than the opening, so she still has to go through the middle of it.
-    static let hoopScale = 4
+    /// The hoop gets its own, because it is the one prop she has to fit THROUGH — and
+    /// because most of `hoop.png` is padding, so the window is much larger than the
+    /// ring inside it. What matters is the drawing: at this scale the ring stands 210
+    /// points tall against a bird 119 tall at full wingspan, which is room to spare.
+    /// Sizing this against the image instead gave a ring barely taller than she is.
+    static let hoopScale = 6
 
     // MARK: - Launch
 
