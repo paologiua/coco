@@ -315,11 +315,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         interactionKind = kind
         hoopGame = HoopGame()
         interaction.onClick = { [weak self] in
+            // Only how close the click landed is decided here. Whether she is too full
+            // to eat is `feed()`'s call, and its answer is a refusal she performs — a
+            // second copy of the threshold sat here, left at the old 85, and swallowed
+            // every click in the last fifteen points of the bar without a sign.
             guard let self, self.interactionKind == .food,
                   hypot(self.driver.bodyCentre.x - NSEvent.mouseLocation.x,
                         self.driver.bodyCentre.y - NSEvent.mouseLocation.y)
-                        < BehaviourDriver.personalSpace,
-                  self.sim.needs.hunger <= 85 else { return }
+                        < BehaviourDriver.personalSpace else { return }
             self.interaction.finish()
             let outcome = self.sim.feed()
             self.perform(outcome, celebrateWith: .seed, count: 4,

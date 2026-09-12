@@ -83,6 +83,16 @@ struct SimulationTests {
         #expect(s.needs.hunger == 60)
     }
 
+    /// The last notch of the bar is real food, not a dead zone. An older threshold of
+    /// 85 lived on in the click handler long after `feed()` moved to 100, and a click
+    /// on a nearly-full bird did nothing at all — no beakful, no refusal.
+    @Test func theLastNotchOfTheBarCanStillBeFed() {
+        let s = sim { $0.needs.hunger = 88 }
+        #expect(s.canFeed)
+        #expect(s.feed() == .done)
+        #expect(s.needs.hunger == 98)
+    }
+
     @Test func playingIsRefusedWhenTooTired() {
         let s = sim { $0.needs = Needs(hunger: 50, affection: 50, energy: 10) }
         #expect(s.play() == .refused(.tooTired))
