@@ -45,6 +45,7 @@ struct BehaviourTests {
                                                            lift: CGFloat($0) * 9)
                                            },
                                            peck: try many("peck", 8),
+                                           struggle: try many("struggle", 8),
                                            hatted: [:])
         return BehaviourDriver(sim: sim, sprites: set,
                                canvasSize: CGSize(width: Double(Canvas.width),
@@ -270,6 +271,24 @@ struct BehaviourTests {
             #expect(driver.bodyCentre.x < hand.x,
                     "prova \(trial): e' rimasta dal lato del muro invece di passare oltre la mano")
         }
+    }
+
+    @Test func releasedSheFliesOffInsteadOfDropping() throws {
+        let sim = Simulation(state: .fresh(now: now))
+        let driver = try makeDriver(sim)
+        driver.beginDrag()
+        driver.dragged(to: CGPoint(x: 500, y: 400))
+        // Dragged, she is wrestling with the hand, not flying along under it.
+        #expect(driver.frame.name.hasPrefix("struggle"))
+
+        driver.endDrag(screen: screen)
+        #expect(driver.behaviour == .flying)
+        let start = driver.position
+        for _ in 0..<10 { driver.tick(dt: 0.1, now: now, cursor: .zero, screen: screen) }
+        // Away and upward. Flying straight down to the floor under the hand is what
+        // this replaced: with the wings beating it read as falling.
+        #expect(driver.position.y > start.y, "e' caduta invece di volare via")
+        #expect(abs(driver.position.x - start.x) > 100, "e' rimasta dove l'hanno lasciata")
     }
 
     @Test func sleepFliesDownBeforeClosingEyes() throws {

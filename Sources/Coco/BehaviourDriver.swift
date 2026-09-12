@@ -86,6 +86,12 @@ final class BehaviourDriver {
         let fly: [Sprite]
         /// Eight frames: head down, beak to the ground, the seed taken, and back up.
         let peck: [Sprite]
+        /// Held in the hand: eight frames of twisting to get out of it. Drawn rather
+        /// than borrowed from flight, which is what being dragged used to show — a
+        /// bird flying along under the cursor reads as going somewhere, not as being
+        /// carried. Anchored on the head like flight, so she is the same size in the
+        /// hand as out of it.
+        let struggle: [Sprite]
         /// The same poses with the party hat drawn in, keyed by the plain sprite's
         /// name. The hat is part of the art now, so nothing is positioned at runtime.
         let hatted: [String: Sprite]
@@ -478,8 +484,12 @@ final class BehaviourDriver {
             // playing it made the step read as a rock back and forth rather than as
             // going somewhere.
             animator.play(Clip(frames: Array(sprites.walk.prefix(3)), fps: 8, loops: true))
-        case .flying, .dragged:
+        case .flying:
             animator.play(Clip(frames: sprites.fly, fps: 12, loops: true))
+        case .dragged:
+            // Faster than the wingbeat: this is not flight, it is a bird objecting to
+            // being picked up. It loops for as long as the hand holds her.
+            animator.play(Clip(frames: sprites.struggle, fps: 14, loops: true))
         case .sleeping:
             animator.play(.still(sprites.blink[2]))    // side-on, eyes shut, feet on the perch
         case .reacting:
@@ -544,13 +554,25 @@ final class BehaviourDriver {
 
     func moveTo(_ point: CGPoint) { position = point }
 
+    /// Let go, she leaves — she is a bird, not something you put down.
+    ///
+    /// She used to make straight for the floor directly under the hand, which with the
+    /// wings still beating read as falling rather than flying. Now she breaks for the
+    /// far side of the screen and climbs a little on the way, which is what a bird that
+    /// has just wriggled out of a hand does.
     func endDrag(screen: NSRect) {
-        // Dropped in mid-air, she flies down rather than hanging there.
-        if position.y > screen.minY + 40 {
-            flyTo(CGPoint(x: position.x, y: screen.minY + Double.random(in: 0...30)))
-        } else {
-            enter(.resting)
-        }
+        let limit = originBounds(in: screen)
+        let leftEdge = limit.x.lowerBound + 20
+        let rightEdge = max(leftEdge, limit.x.upperBound - 20)
+        // Towards whichever edge is further off: a getaway of thirty points does not
+        // read as one, and she is as often dropped near an edge as in the middle.
+        let away = abs(position.x - leftEdge) > abs(position.x - rightEdge) ? leftEdge : rightEdge
+        // Up a little as she goes, so the first thing the drop shows is a climb.
+        // Clamped, or a bird let go near the top of the screen flies into the ceiling
+        // and the climb is invisible.
+        let climb = min(max(position.y + Double.random(in: 40...120), limit.y.lowerBound),
+                        limit.y.upperBound)
+        flyTo(CGPoint(x: away, y: climb))
     }
 
     /// A short clip that plays once and hands control back.

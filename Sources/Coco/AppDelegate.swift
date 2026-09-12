@@ -137,18 +137,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard let idle = load("idle"), let sad = load("sad"),
               let blink = sequence("blink", 4), let petted = sequence("petted", 4),
               let walk = sequence("walk", 4),
-              let fly = sequence("fly", 4), let peck = sequence("peck", 8)
+              let fly = sequence("fly", 4), let peck = sequence("peck", 8),
+              let struggle = sequence("struggle", 8)
         else { return nil }
 
         // The hat is drawn into the art, so every frame has a hatted twin under the
         // same name. They stay optional: a frame whose twin is missing goes bare-headed
         // on the day rather than stopping the app from starting.
         var hatted: [String: Sprite] = [:]
-        for frame in [idle, sad] + blink + petted + walk + fly + peck {
+        for frame in [idle, sad] + blink + petted + walk + fly + peck + struggle {
             if let worn = load("\(frame.name)_hat") { hatted[frame.name] = worn }
         }
         return .init(idle: idle, sad: sad, blink: blink, petted: petted,
-                     walk: walk, fly: fly, peck: peck, hatted: hatted)
+                     walk: walk, fly: fly, peck: peck, struggle: struggle, hatted: hatted)
     }
 
     private var keepPosition: CGPoint?
@@ -566,8 +567,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             particles.stagger(.refused, count: 2, at: emissionPoint)
             driver.flee(from: NSEvent.mouseLocation, in: screen)
         } else {
-            // Refused too: ticket 10 turns that into her looking away.
-            driver.endDrag(screen: screen)
+            // Refused too: ticket 10 turns that into her looking away. She settles
+            // rather than leaving — `endDrag` is a bird getting out of a hand, and a
+            // click that was never a drag has nothing to get out of.
+            driver.settle(screen: screen)
         }
     }
 

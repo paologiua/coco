@@ -59,6 +59,10 @@ SHEETS = {
     "walk":   dict(rows=1, anchor="perch", names=[f"walk_{i}" for i in range(4)]),
     "fly":    dict(rows=2, anchor="air",   names=[f"fly_{i}" for i in range(4)]),
     "pecked": dict(rows=2, anchor="perch", names=[f"peck_{i}" for i in range(8)]),
+    # Held in the hand and twisting to get out of it. Anchored in the air like flight,
+    # and for the same reason: her feet are off the ground, so a ground line would put
+    # the bird wherever her dangling toes happened to reach in that frame.
+    "struggle": dict(rows=2, anchor="air", names=[f"struggle_{i}" for i in range(8)]),
 }
 
 
@@ -181,13 +185,26 @@ def head_metrics(path):
             stack += [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1),
                       (x + 1, y + 1), (x - 1, y - 1), (x + 1, y - 1), (x - 1, y + 1)]
         blobs.append(group)
-    cheek = max(blobs, key=lambda g: sum(y for _, y in g) / len(g))
-    cx = sum(x for x, _ in cheek) / len(cheek)
-    cy = sum(y for _, y in cheek) / len(cheek)
-    face = [q for q, c in px.items()
-            if (lambda C: C[0] > 200 and C[1] > 200 and C[2] < 110)(rgb(c))
-            and abs(q[0] - cx) <= 11 and abs(q[1] - cy) <= 11]
-    return (cx, cy), len(face)
+
+    def measure(group):
+        cx = sum(x for x, _ in group) / len(group)
+        cy = sum(y for _, y in group) / len(group)
+        face = [q for q, c in px.items()
+                if (lambda C: C[0] > 200 and C[1] > 200 and C[2] < 110)(rgb(c))
+                and abs(q[0] - cx) <= 11 and abs(q[1] - cy) <= 11]
+        return (cx, cy), len(face)
+
+    # A blob with no yellow around it is not a cheek. Keying magenta out leaves the odd
+    # purple pixel along an edge, and a single stray one below her feet is lower than
+    # she is, so "the lowest blob wins" handed back a point off the bird with a head
+    # area of nothing — which, on an air-anchored sheet, is read as a bird drawn far
+    # too small and scaled up until it no longer fits the canvas.
+    measured = [(g, measure(g)) for g in blobs]
+    best_face = max(face for _, (_, face) in measured)
+    if best_face:
+        measured = [m for m in measured if m[1][1] >= best_face * 0.4]
+    _, result = max(measured, key=lambda m: sum(y for _, y in m[0]) / len(m[0]))
+    return result
 
 
 PERCHED = None
