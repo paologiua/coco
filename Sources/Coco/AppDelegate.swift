@@ -50,12 +50,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// Points per pixel for the things that are NOT Coco. They are drawn at a coarser
     /// grain than she is on purpose: at one point per pixel they would be specks.
     static let propScale = 3
-    /// The hoop gets its own, because it is the one prop she has to fit THROUGH — and
-    /// because most of `hoop.png` is padding, so the window is much larger than the
-    /// ring inside it. What matters is the drawing: at this scale the ring stands 210
-    /// points tall against a bird 119 tall at full wingspan, which is room to spare.
-    /// Sizing this against the image instead gave a ring barely taller than she is.
-    static let hoopScale = 6
+    /// The hoop gets its own, because it is the one prop she has to fit THROUGH.
+    /// At this scale the ring stands 280 points tall with an opening 212 points high,
+    /// against a bird 119 tall at full wingspan.
+    static let hoopScale = 4
+    /// Half the height of the hole through the ring, in points.
+    ///
+    /// Measured from `hoop.png`: the opening is 53 of the asset's 70 rows. This is what
+    /// the game scores against, and it has to be the HOLE rather than the image — most
+    /// of the old asset was padding, and sizing the game by the image is what let her
+    /// score for passing outside the ring.
+    static var hoopOpening: Double { 53.0 / 2 * Double(hoopScale) }
 
     // MARK: - Launch
 
@@ -309,7 +314,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             // half the size of the one on screen, and she kept missing a ring she was
             // visibly flying through.
             driver.interactionTarget = hoopGame.target(bird: driver.bodyCentre, hoop: mouse,
-                                                       scale: Double(Self.hoopScale),
+                                                       opening: Self.hoopOpening,
                                                        reach: driver.reachableCentreX(in: screen))
             interaction.passes = hoopGame.passes
             if hoopGame.passes >= 3 { interaction.finish(completed: true) }

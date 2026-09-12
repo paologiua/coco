@@ -22,11 +22,17 @@ final class InteractionWindow {
 
     func show(_ kind: Kind, seconds: Double, scale: Int) {
         finish(completed: false)
-        let size = kind == .food ? CGSize(width: 24 * scale, height: 24 * scale)
-                                 : CGSize(width: 24 * scale, height: 64 * scale)
         let name = kind == .food ? "food" : "hoop"
         let image = Bundle.main.url(forResource: name, withExtension: "png", subdirectory: "UI")
             .flatMap(NSImage.init(contentsOf:))
+        // Measured from the artwork rather than written down. These were the literals
+        // 24x24 and 24x64, so redrawing a prop at a different shape silently stretched
+        // it into the old one's proportions.
+        let pixels = image?.representations.first.map {
+            CGSize(width: $0.pixelsWide, height: $0.pixelsHigh)
+        } ?? CGSize(width: 24, height: 24)
+        let size = CGSize(width: pixels.width * CGFloat(scale),
+                          height: pixels.height * CGFloat(scale))
 
         if kind == .food {
             panel = makePanel(size: size,

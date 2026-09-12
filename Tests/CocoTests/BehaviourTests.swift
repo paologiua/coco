@@ -102,7 +102,7 @@ struct BehaviourTests {
         var scored = false
         for i in 0..<1200 {
             driver.interactionTarget = game.target(bird: driver.bodyCentre, hoop: CGPoint(x: 500, y: 400),
-                                                   scale: Double(AppDelegate.hoopScale),
+                                                   opening: AppDelegate.hoopOpening,
                                                    reach: driver.reachableCentreX(in: screen))
             driver.tick(dt: 0.05, now: now.addingTimeInterval(Double(i) * 0.05),
                         cursor: CGPoint(x: -9000, y: -9000), screen: screen)
@@ -130,7 +130,7 @@ struct BehaviourTests {
             var closest = Double.infinity
             for i in 0..<1200 {
                 driver.interactionTarget = game.target(bird: driver.bodyCentre, hoop: hoop,
-                                                       scale: Double(AppDelegate.hoopScale),
+                                                       opening: AppDelegate.hoopOpening,
                                                        reach: driver.reachableCentreX(in: screen))
                 driver.tick(dt: 0.05, now: now.addingTimeInterval(Double(i) * 0.05),
                             cursor: CGPoint(x: -9000, y: -9000), screen: screen)
@@ -152,7 +152,7 @@ struct BehaviourTests {
         driver.interactionStyle = .chase
         for i in 0..<400 {
             driver.interactionTarget = game.target(bird: driver.bodyCentre, hoop: CGPoint(x: 60, y: 400),
-                                                   scale: Double(AppDelegate.hoopScale),
+                                                   opening: AppDelegate.hoopOpening,
                                                    reach: driver.reachableCentreX(in: screen))
             driver.tick(dt: 0.05, now: now.addingTimeInterval(Double(i) * 0.05),
                         cursor: CGPoint(x: -9000, y: -9000), screen: screen)
@@ -376,7 +376,7 @@ struct BehaviourTests {
             // The scale the app actually ships, not a convenient one: the run-up, the
             // scoring band and the ring's size all derive from it.
             driver.interactionTarget = game.target(bird: driver.bodyCentre, hoop: hoop,
-                                                   scale: Double(AppDelegate.hoopScale),
+                                                   opening: AppDelegate.hoopOpening,
                                                    reach: driver.reachableCentreX(in: screen))
             driver.tick(dt: 0.1, now: now.addingTimeInterval(Double(tick) / 10),
                         cursor: hoop, screen: screen)
