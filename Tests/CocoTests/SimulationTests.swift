@@ -272,6 +272,31 @@ struct SimulationTests {
         #expect(outcome != .refused(.asleep))
     }
 
+    @Test func sheCanOnlyBeAskedWhenSheIsThereAndAwake() {
+        let now = Date()
+
+        // Awake and on screen: every action is live, including the ones she will refuse.
+        // Refusing is something she DOES, and a grey menu item would say it worse.
+        let ready = sim { $0.needs.hunger = 100 }
+        #expect(ready.canBeAsked)
+        #expect(ready.feed() == .refused(.notHungry))
+
+        // Asleep she cannot turn her head away, so there is nothing to see.
+        let sleeping = sim { $0.sleep = .deep }
+        #expect(!sleeping.canBeAsked)
+
+        // Hidden she is not on the screen at all.
+        let hidden = sim { $0.hidden = true }
+        #expect(!hidden.canBeAsked)
+
+        // And hiding her mid-session takes the actions with her.
+        let visible = sim { _ in }
+        #expect(visible.canBeAsked)
+        visible.setHidden(true)
+        #expect(!visible.canBeAsked)
+        _ = now
+    }
+
     // MARK: - Persistence
 
     @Test func stateSurvivesARoundTrip() throws {

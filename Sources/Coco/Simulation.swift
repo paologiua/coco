@@ -71,6 +71,15 @@ final class Simulation {
     var sleep: SleepState { state.sleep }
     var canFeed: Bool { state.sleep == .awake && state.needs.hunger < 100 }
 
+    /// Whether she is in a position to be asked for anything at all.
+    ///
+    /// Not the same as whether she would say yes. A refusal is something Coco DOES —
+    /// she turns her head away — and that only works when there is a Coco on screen to
+    /// do it. Hidden she is not there; asleep she cannot react. In both cases the menu
+    /// items used to be live and do nothing whatsoever when clicked, which is worse
+    /// than either a refusal or a grey item.
+    var canBeAsked: Bool { !state.hidden && state.sleep == .awake }
+
     init(state: SavedState) {
         self.state = state
     }

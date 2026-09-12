@@ -43,7 +43,11 @@ Something the human does *to* Coco that raises a Need.
 - **Feed**, **Play**, **Sleep** — invoked from the menubar.
 - **Petting** — invoked by clicking Coco directly; the only Action reachable without the menu.
 
-An Action Coco does not currently want is **refused in character** — she turns her head away — never greyed out.
+An Action Coco does not currently want is **refused in character** — she turns her head
+away — never greyed out. That holds while there is a Coco on screen to do the refusing.
+**Hidden or asleep she cannot answer at all**, and those menu items are disabled: not
+because she would say no, but because there is nobody there to say it. Left live they did
+nothing whatsoever when clicked, which is worse than either.
 
 ## Behaviour
 

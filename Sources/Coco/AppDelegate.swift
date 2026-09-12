@@ -243,6 +243,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     // MARK: - Menu
 
+    /// Grey out only what she cannot answer at all.
+    ///
+    /// Feed when she is full and Play when she is worn out stay LIVE on purpose: she
+    /// answers those herself by turning away, which says something a grey item cannot.
+    /// Hidden or asleep is different — there is nobody there to turn away — so those
+    /// are the ones that go grey.
+    func validateMenuItem(_ item: NSMenuItem) -> Bool {
+        guard let sim else { return true }
+        switch item.action {
+        case #selector(feed), #selector(playWith), #selector(sleepNow):
+            return sim.canBeAsked
+        default:
+            return true
+        }
+    }
+
     func menuWillOpen(_ menu: NSMenu) {
         interaction.finish()
         statusBlock.moodImage = moodIcons[sim.mood.rawValue]
