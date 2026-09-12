@@ -1,0 +1,25 @@
+Generate an image and save the resulting PNG to this exact path:
+/private/tmp/claude-501/-Users-paologiua-Projects-coco/c7b16e4a-01d4-47f1-8622-5396428a91ae/scratchpad/egg-notice.png
+
+Do not write any other files and do not modify any repository.
+
+The attached image is an existing notice card from the same game. Reproduce its style EXACTLY — the same cream panel, the same thick dark outline, the same red-and-blue diagonal striped border just inside it, the same pixel lettering, the same pixel size, the same colours. Only the words change.
+
+Use this prompt:
+
+---
+Pixel art UI notice, 1024x384: a single small horizontal card, centred, filling most of the frame with clear margins on all four sides.
+
+The card is a cream panel with a thick dark outline all the way round and a red-and-blue diagonal-striped border just inside that outline, exactly as in the attached image.
+
+Inside the card there is NO picture of any kind — only text. Centred horizontally and vertically, in dark brown-black pixel lettering, exactly this English text on two lines, both lines centred:
+
+You found an egg!
+Click to hatch it
+
+REPRODUCE THAT TEXT EXACTLY, character for character. Do not translate it, do not rephrase it, do not add or drop a word. The lettering is the only thing in the card, so make it large and crisply legible, filling the width comfortably.
+
+CRITICAL — TRUE pixel art in the same style and at the same pixel size as the attached image: drawn on a grid of about 340 by 128 pixels and then scaled up so each "pixel" is a sharp square. Visible square pixels, hard edges, but fine enough that the letters read cleanly. NO antialiasing, NO gradients, NO blur, NO glow, NO drop shadow.
+
+Background outside the card: solid flat magenta #FF00FF filling the whole canvas. No scenery, no sparkles, no eggs, no shadow, no extra text.
+---

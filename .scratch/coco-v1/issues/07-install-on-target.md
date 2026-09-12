@@ -183,3 +183,30 @@ Also worth knowing at the machine:
 - The letter is sized to the screen height, so it is readable on the 14-inch display it
   was drawn for. It has not been seen on her machine.
 
+
+### 2026-09-12 — An egg to hatch, no speech bubbles, and a reset switch for the handover
+
+Three changes that alter the rehearsal.
+
+**The birthday is preset to 14 September.** A fresh state now carries it, so the one
+setting the whole gift depends on is right before anyone touches it. Step 4 below
+becomes a check rather than a task — but still a check: confirm it reads 14 September in
+Settings on her machine, because a state carried over from testing could hold something
+else.
+
+**First launch is an egg.** Instead of Coco flying in with a speech bubble, a card
+appears in the middle of the screen — "You found an egg! Click to hatch it" — and
+clicking it hatches her at the bottom of the screen. The card has no timeout and cannot
+be dismissed by clicking away, deliberately: it is the only route into owning a Coco at
+all, and one stray click must not leave a first launch that produced nothing.
+
+**Settings has "Start over next time Coco opens".** This is the handover switch. Test
+her on the target machine as much as you like, then tick it and quit; the next launch
+throws the state away and she is new — full bars, and the egg to hatch. Tick it LAST,
+after the reboot check, or the reboot itself will consume the reset and she will be
+hatched before she is given.
+
+Every speech bubble is gone — welcome, reunion and birthday — along with
+`Assets/Text`. Nothing in the app reads a text file any more, so the delivery no longer
+depends on one being present and readable.
+

@@ -50,20 +50,6 @@ struct SimulationTests {
         #expect(away.needs.hunger == short.needs.hunger)
     }
 
-    @Test func longAbsenceIsFlaggedForAReunion() {
-        let s = sim(); s.advance(to: hours(60))
-        #expect(s.returnedFromLongAbsence)
-    }
-
-    @Test func shortAbsenceIsNotAReunion() {
-        let s = sim(); s.advance(to: hours(2))
-        #expect(!s.returnedFromLongAbsence)
-        // A weekend of not opening the laptop must not trigger it either, or the
-        // greeting fires most Mondays and stops being a greeting.
-        let weekend = sim(); weekend.advance(to: hours(30))
-        #expect(!weekend.returnedFromLongAbsence)
-    }
-
     @Test func backwardsClockChargesNothing() {
         let s = sim(); s.advance(to: hours(-10))
         #expect(s.needs == .full)
@@ -308,6 +294,17 @@ struct SimulationTests {
         // A drag is different, and still wakes her.
         s.wakeByDragging()
         #expect(s.sleep == .awake)
+    }
+
+    @Test func aFreshCocoIsReadyForHerBirthdayAndHerEgg() {
+        let s = SavedState.fresh()
+        // The one setting the whole gift depends on is right before anyone touches it.
+        #expect(s.birthdayMonth == 9)
+        #expect(s.birthdayDay == 14)
+        // And she has not hatched yet, so a reset brings the egg back.
+        #expect(!s.firstLaunchDone)
+        #expect(s.needs == .full)
+        #expect(s.resetOnNextLaunch == nil)
     }
 
     // MARK: - Persistence

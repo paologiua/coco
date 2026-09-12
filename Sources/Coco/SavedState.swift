@@ -23,7 +23,10 @@ struct SavedState: Codable {
     /// bubble is gone, replaced by the letter, which has no once-a-year latch. Kept so
     /// that a state file written by an older build still decodes.
     var lastBirthdayCelebrated: Int?
-    /// Month and day only — a birthday recurs, it is not a date.
+    /// Month and day only — a birthday recurs, it is not a date. Preset to the day
+    /// this was made for, so the one setting the whole gift depends on is right before
+    /// anyone touches it. A missing birthday costs the letter, and a letter that never
+    /// appears is the single failure this app cannot afford.
     var birthdayMonth: Int?
     var birthdayDay: Int?
 
@@ -39,6 +42,14 @@ struct SavedState: Codable {
     /// she has lived through. This file has to survive years of small changes.
     var scale: Int?
 
+    /// 14 September.
+    static let defaultBirthday = (month: 9, day: 14)
+
+    /// Set from Settings. On the next launch the state is thrown away and rebuilt, so
+    /// she is new again: full bars, and the egg to hatch. It exists to hand the app over
+    /// — test it on the machine it is going to, then wipe the evidence.
+    var resetOnNextLaunch: Bool?
+
     var birthday: DateComponents? {
         guard let birthdayMonth, let birthdayDay else { return nil }
         return DateComponents(month: birthdayMonth, day: birthdayDay)
@@ -53,12 +64,13 @@ struct SavedState: Codable {
                    pettingWindowSeconds: nil,
                    firstLaunchDone: false,
                    lastBirthdayCelebrated: nil,
-                   birthdayMonth: nil,
-                   birthdayDay: nil,
+                   birthdayMonth: Self.defaultBirthday.month,
+                   birthdayDay: Self.defaultBirthday.day,
                    launchAtLogin: false,
                    hidden: false,
                    forcedSleepUntil: nil,
-                   scale: nil)
+                   scale: nil,
+                   resetOnNextLaunch: nil)
     }
 }
 

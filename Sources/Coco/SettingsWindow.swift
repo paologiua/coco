@@ -12,16 +12,20 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
     private let monthPopup = NSPopUpButton()
     private let dayPopup = NSPopUpButton()
     private let loginCheck = NSButton(checkboxWithTitle: "Start Coco when I log in", target: nil, action: nil)
+    private let resetCheck = NSButton(checkboxWithTitle: "Start over next time Coco opens",
+                                      target: nil, action: nil)
 
     /// Called with the new state so the app can persist it and react.
-    var onChange: ((_ month: Int?, _ day: Int?, _ launchAtLogin: Bool, _ scale: Int) -> Void)?
+    var onChange: ((_ month: Int?, _ day: Int?, _ launchAtLogin: Bool,
+                    _ scale: Int, _ resetOnNextLaunch: Bool) -> Void)?
 
-    func show(month: Int?, day: Int?, launchAtLogin: Bool, scale: Int) {
+    func show(month: Int?, day: Int?, launchAtLogin: Bool, scale: Int, resetOnNextLaunch: Bool) {
         if window == nil { build() }
         monthPopup.selectItem(at: month ?? 0)      // index 0 is "Not set"
         rebuildDays()
         if let day { dayPopup.selectItem(at: day - 1) }
         loginCheck.state = launchAtLogin ? .on : .off
+        resetCheck.state = resetOnNextLaunch ? .on : .off
 
         // The app is .accessory, so it has to ask for activation explicitly — otherwise
         // the window appears behind whatever the human was using.
@@ -53,9 +57,23 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
 
         loginCheck.target = self
         loginCheck.action = #selector(changed)
+        resetCheck.target = self
+        resetCheck.action = #selector(changed)
+        // Takes effect on the NEXT launch rather than now, on purpose: it is meant to
+        // be armed on the machine Coco is being given to, after she has been tested
+        // there, so that the first thing her owner sees is the egg and full bars.
+        let resetNote = NSTextField(labelWithString:
+            "Forgets everything and hatches again, with her bars full.")
+        resetNote.font = .systemFont(ofSize: 11)
+        resetNote.textColor = .secondaryLabelColor
 
         content.addArrangedSubview(birthdayRow)
         content.addArrangedSubview(loginCheck)
+        let rule = NSBox()
+        rule.boxType = .separator
+        content.addArrangedSubview(rule)
+        content.addArrangedSubview(resetCheck)
+        content.addArrangedSubview(resetNote)
 
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 400, height: 180),
                               styleMask: [.titled, .closable],
@@ -110,7 +128,8 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
                   loginCheck.state == .on,
                   // One size now: she is stored at the size she is shown at, so there
                   // is nothing to multiply and nothing to choose between.
-                  1)
+                  1,
+                  resetCheck.state == .on)
     }
 
     /// Verified to work with an ad-hoc signature — the API requires a valid signature,

@@ -66,13 +66,15 @@ They also **recover at different rates**, which is the lever that decides how of
 
 ## Catch-up
 
-What happens to Needs across time when the app was not running — the Mac was asleep, or Coco was quit. Decay is charged against real elapsed time but **capped**, so a long absence costs no more than a short one, and a return after a long absence is greeted as a **reunion** rather than a reckoning.
+What happens to Needs across time when the app was not running — the Mac was asleep, or Coco was quit. Decay is charged against real elapsed time but **capped**, so a long absence costs no more than a short one. A long absence is no longer greeted: see below.
 
 Only **Hunger** decays across it: those hours without food were real. **Affection is frozen** and **Energy is restored** — a closed lid is neither a waking hour nor an hour spent ignoring her. Without the Energy rule a night was charged as twelve hours awake, and she was found flat out every morning, asleep until nearly lunchtime; without the Affection rule the same night would empty a three-hour bar four times over.
 
 The **12-hour cap** now has almost nothing left to do: five hours already empties Hunger, so capping the charge changes no outcome. It survives as the guarantee that a long absence is never worse than a medium one.
 
-A return after **48 hours** is a **reunion**: she greets it with a line in the speech bubble rather than letting it pass. The threshold sits well clear of a weekend of not opening the laptop, because a greeting that fires most Mondays is not a greeting.
+The greeting that used to mark a long absence is gone, along with every other speech
+bubble: the welcome, the reunion and the birthday line. Coco says things by doing them
+now — she hatches out of an egg the first time, and hands over a letter on her birthday.
 
 ## Birthday
 

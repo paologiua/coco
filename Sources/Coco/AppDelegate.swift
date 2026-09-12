@@ -33,18 +33,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// The three she can be asked for. Held so the menu can grey them itself.
     private var actionItems: [NSMenuItem] = []
     private let particles = ParticleField()
-    private let bubble = BubbleWindow()
     private let birthdayLetter = BirthdayLetter()
+    private let hatching = Hatching()
     private let interaction = InteractionWindow()
     private var interactionKind: InteractionWindow.Kind?
     private var hoopGame = HoopGame()
     private var lastPerchRefresh = Date.distantPast
-    /// A line waiting to be said once Coco has actually landed. Showing it while she is
-    /// still flying in would put the bubble beside an empty patch of screen.
-    private var pendingLine: String?
-    /// Latched from the advance that noticed the absence, because the next tick's
-    /// advance immediately clears the flag on the simulation.
-    private var sawLongAbsence = false
     private var isDragging = false
     private var ticks = 0
     private var runningHz = AppDelegate.awakeHz
@@ -79,9 +73,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         sprites = set
 
-        sim = Simulation(state: store.load())
+        // Armed from Settings last time: throw the state away and start again, so the
+        // first thing seen is the egg and a bird with full bars. Cleared as it is used,
+        // and saved at once — a crash between here and the first autosave must not
+        // leave it armed to wipe her again.
+        var loaded = store.load()
+        if loaded.resetOnNextLaunch == true {
+            loaded = .fresh()
+            store.save(loaded)
+            NSLog("Coco: state reset on launch")
+        }
+        sim = Simulation(state: loaded)
         sim.advance(to: Date())            // charge the time she was not running
-        sawLongAbsence = sim.returnedFromLongAbsence
         store.save(sim.state)
 
         scale = Self.defaultScale
@@ -101,9 +104,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
         }
 
-        startWelcomeIfNeeded()
-        queueReunionIfNeeded()
         retime(to: Self.awakeHz)
+        startHatchingIfNeeded()
+    }
+
+    /// The very first launch: she is not on the screen yet, she is in an egg.
+    ///
+    /// The panel is ordered out for the duration, so there is no second Coco standing
+    /// about while the first one is still hatching.
+    private func startHatchingIfNeeded() {
+        guard !sim.state.firstLaunchDone else { return }
+        let screen = (panel.screen ?? NSScreen.main ?? NSScreen.screens[0]).visibleFrame
+        panel.orderOut(nil)
+        hatching.onHatched = { [weak self] point in
+            guard let self else { return }
+            // She takes over exactly where the animation left her standing.
+            self.driver.moveTo(point)
+            self.panel.setFrameOrigin(self.driver.displayPosition)
+            self.sim.markFirstLaunchDone()
+            self.store.save(self.sim.state)
+            if !self.sim.state.hidden { self.panel.showEverywhere() }
+        }
+        hatching.offer(on: screen)
     }
 
     private func loadSprites() -> BehaviourDriver.SpriteSet? {
@@ -147,44 +169,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         driver = BehaviourDriver(sim: sim, sprites: sprites,
                                  canvasSize: panel.frame.size, scale: scale, start: start)
         panel.setFrameOrigin(driver.displayPosition)
-        if !sim.state.hidden { panel.showEverywhere() }
-    }
-
-    /// The very first launch: she arrives from off screen rather than simply being
-    /// there. It is the moment the recipient works out what this is.
-    private func startWelcomeIfNeeded() {
-        guard !sim.state.firstLaunchDone else { return }
-        let screen = (panel.screen ?? NSScreen.main ?? NSScreen.screens[0]).visibleFrame
-        let landing = CGPoint(x: screen.maxX - panel.frame.width - 120, y: screen.minY + 10)
-        driver.flyIn(from: CGPoint(x: screen.maxX + panel.frame.width, y: screen.midY),
-                     to: landing)
-        pendingLine = text(named: "welcome")
-        sim.markFirstLaunchDone()
-        store.save(sim.state)
-    }
-
-    /// Coming back after days away should be a welcome, not a reckoning. The
-    /// simulation has counted the absence since the model was written; nothing ever
-    /// read the flag, so until now returning looked exactly like never having left.
-    ///
-    /// Reuses the bubble the welcome and the birthday already use, so the whole
-    /// feature is a text file and a queued line. The welcome wins if both are due:
-    /// a first launch is not a return.
-    private func queueReunionIfNeeded() {
-        guard sawLongAbsence, pendingLine == nil, sim.state.firstLaunchDone else { return }
-        sawLongAbsence = false
-        pendingLine = text(named: "reunion") ?? "You came back!"
-        NSLog("Coco: reunion line queued")
-    }
-
-    /// Plain text from the bundle, so the birthday line can be rewritten in later years
-    /// without a toolchain. A missing file is not worth crashing over.
-    private func text(named name: String) -> String? {
-        guard let url = Bundle.main.url(forResource: name, withExtension: "txt",
-                                        subdirectory: "Text"),
-              let raw = try? String(contentsOf: url, encoding: .utf8) else { return nil }
-        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : trimmed
+        if !sim.state.hidden, sim.state.firstLaunchDone { panel.showEverywhere() }
     }
 
     private func buildStatusItem() {
@@ -238,8 +223,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(action("Quit Coco", #selector(quit), key: "q"))
         statusItem.menu = menu
 
-        settings.onChange = { [weak self] month, day, launchAtLogin, scale in
-            self?.applySettings(month: month, day: day, launchAtLogin: launchAtLogin, scale: scale)
+        settings.onChange = { [weak self] month, day, launchAtLogin, scale, reset in
+            self?.applySettings(month: month, day: day, launchAtLogin: launchAtLogin,
+                                scale: scale, resetOnNextLaunch: reset)
         }
     }
 
@@ -283,7 +269,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             return
         }
         if kind == .hoop, sim.needs.energy < 15 { driver.refuse(); return }
-        bubble.hide()
         interactionKind = kind
         hoopGame = HoopGame()
         interaction.onClick = { [weak self] in
@@ -380,7 +365,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         interaction.finish()
         birthdayLetter.dismissInvitation()
         birthdayLetter.close()
-        bubble.hide()
         sim.setHidden(!sim.state.hidden)
         if sim.state.hidden { panel.orderOut(nil) } else { panel.showEverywhere() }
         store.save(sim.state)
@@ -389,12 +373,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func openSettings() {
         interaction.finish()
         settings.show(month: sim.state.birthdayMonth, day: sim.state.birthdayDay,
-                      launchAtLogin: sim.state.launchAtLogin, scale: scale)
+                      launchAtLogin: sim.state.launchAtLogin, scale: scale,
+                      resetOnNextLaunch: sim.state.resetOnNextLaunch ?? false)
     }
 
-    private func applySettings(month: Int?, day: Int?, launchAtLogin: Bool, scale newScale: Int) {
+    private func applySettings(month: Int?, day: Int?, launchAtLogin: Bool,
+                               scale newScale: Int, resetOnNextLaunch: Bool) {
         sim.setBirthday(month: month, day: day)
         sim.setLaunchAtLogin(launchAtLogin)
+        sim.setResetOnNextLaunch(resetOnNextLaunch)
         if newScale != scale {
             sim.setScale(newScale)
             scale = newScale
@@ -427,9 +414,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if ticks % Int(runningHz) == 0 {
             sim.advance(to: now)
             // Also catches the lid being reopened while she was already running.
-            if sim.returnedFromLongAbsence { sawLongAbsence = true }
-            queueReunionIfNeeded()
-            updateNapFromMachineIdle()
+                updateNapFromMachineIdle()
             showMood()
         }
         if ticks % Int(runningHz * 60) == 0 {
@@ -471,18 +456,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if origin != panel.frame.origin { panel.setFrameOrigin(origin) }
 
         updateClickThrough()
-        deliverPendingLine()
         retime(to: driver.behaviour == .sleeping ? Self.asleepHz : Self.awakeHz)
-    }
-
-    private func deliverPendingLine() {
-        guard let line = pendingLine, interactionKind == nil, driver.hasLanded, !sim.state.hidden else { return }
-        pendingLine = nil
-        let screen = (panel.screen ?? NSScreen.main ?? NSScreen.screens[0]).visibleFrame
-        let seconds = 6.0
-        bubble.show(line, above: panel.frame, on: screen, seconds: seconds)
-        driver.stay(for: seconds)
-
     }
 
     /// Just above and beside her head, on whichever side she is facing, in stage

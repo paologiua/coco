@@ -19,18 +19,11 @@ enum ActionOutcome: Equatable {
 final class Simulation {
     private(set) var state: SavedState
 
-    /// Set when a catch-up covered more than a day. The behaviour driver consumes this
-    /// to greet the human rather than sulk at them; a holiday should read as a reunion,
-    /// not a fine.
-    private(set) var returnedFromLongAbsence = false
 
     /// However long Coco was left alone, at most this much decay is charged on return.
     /// Uncapped decay is what gets tamagotchis uninstalled; freezing time while quit
     /// feels fake.
     static let catchUpCapHours = 12.0
-    /// A greeting that fires every Monday morning stops being a greeting, so this sits
-    /// well clear of an ordinary weekend of not opening the laptop.
-    static let longAbsenceHours = 48.0
 
     /// Energy thresholds for the two sleeps.
     static let deepSleepBelow = 20.0
@@ -92,7 +85,6 @@ final class Simulation {
         // A backwards clock — a timezone change, a manual adjustment — must never
         // credit Coco with negative time.
         let elapsed = max(0, raw)
-        returnedFromLongAbsence = elapsed >= Self.longAbsenceHours
 
         let charged = min(elapsed, Self.catchUpCapHours)
         var needs = state.needs
@@ -263,4 +255,5 @@ final class Simulation {
     func setLaunchAtLogin(_ on: Bool) { state.launchAtLogin = on }
     func setScale(_ scale: Int) { state.scale = scale }
     func setHidden(_ hidden: Bool) { state.hidden = hidden }
+    func setResetOnNextLaunch(_ on: Bool) { state.resetOnNextLaunch = on }
 }
