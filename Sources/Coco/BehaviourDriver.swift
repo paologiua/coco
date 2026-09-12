@@ -189,8 +189,15 @@ final class BehaviourDriver {
     /// stage from her, hanging in empty space.
     var emissionPoint: CGPoint {
         let box = sprites.idle.drawnBounds
-        let x = facingRight ? box.maxX - box.width * 0.22 : box.minX + box.width * 0.22
-        return CGPoint(x: x, y: Double(Canvas.particleHeadroom) + box.minY)
+        // Her head, and mirrored the same way the drawing is. It used to be measured in
+        // from whichever edge she faced, which is only the same thing when she faces
+        // right: facing left it put the marks a dozen points past her head, out in the
+        // air beside her.
+        let head = box.maxX - box.width * 0.17
+        let x = facingRight ? head : Double(Canvas.width) - head
+        // Just clear of the top of her head, so they rise off her rather than sitting
+        // on her.
+        return CGPoint(x: x, y: Double(Canvas.particleHeadroom) + box.minY - 4)
     }
 
     /// The band her body centre can actually be moved into on this screen.

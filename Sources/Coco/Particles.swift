@@ -37,7 +37,10 @@ final class ParticleField {
 
     private var queue: [(kind: Kind, origin: CGPoint)] = []
     private var queueClock = 0.0
-    private static let queueInterval = 0.26
+    /// Long enough that a mark has cleared the one before it. A mark is five cells
+    /// across — fifteen points — and at the old quarter second they rose four points
+    /// between one and the next, so three hearts arrived as one violet blob.
+    private static let queueInterval = 0.6
 
     var isEmpty: Bool { particles.isEmpty && queue.isEmpty }
 
@@ -60,13 +63,15 @@ final class ParticleField {
         // as far and half as fast beside a Coco who had grown. They scale with the pip.
         let unit = Double(ParticleField.pip)
         let dy = kind == .confetti ? Double.random(in: 3...8) * unit
-                                   : -Double.random(in: 3.5...5.5) * unit
+                                   : -Double.random(in: 9...12) * unit
         // Scattered rather than identical: marks emitted from one point with one
         // velocity stack into a single thick mark and read as a rendering fault.
-        let origin = CGPoint(x: point.x + Double.random(in: -3.5...3.5) * unit,
-                             y: point.y + Double.random(in: -1.5...1.5) * unit)
+        let origin = CGPoint(x: point.x + Double.random(in: -2...2) * unit,
+                             y: point.y + Double.random(in: -1...1) * unit)
         particles.append(Particle(position: origin,
-                                  velocity: CGVector(dx: drift + Double.random(in: -2.5...2.5) * unit,
+                                  // Fanned sideways as they rise. Marks that go straight
+                                  // up stay stacked however far apart they start.
+                                  velocity: CGVector(dx: drift + Double.random(in: -7...7) * unit,
                                                      dy: dy),
                                   age: 0,
                                   lifetime: (kind == .confetti ? 1.6 : 2.2) * Double.random(in: 0.8...1.2),

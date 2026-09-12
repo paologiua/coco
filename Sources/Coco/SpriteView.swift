@@ -66,11 +66,17 @@ final class SpriteView: NSView {
             // `pip` points along. Stepping by anything else stacks them: the cells were
             // laid out a point apart while being drawn five points wide, so a Z came out
             // as a solid square and the sleeping marks stopped reading as letters.
+            // A particle's position is the CENTRE of its mark, not the top-left corner
+            // of its matrix. As a corner it was off by half a mark in both directions,
+            // which at fifteen points across is most of the distance between sitting on
+            // her head and floating beside it.
             let pip = CGFloat(ParticleField.pip)
+            let originX = particle.position.x * scale - CGFloat(rows[0].count) * pip / 2
+            let originY = particle.position.y * scale - CGFloat(rows.count) * pip / 2
             for (row, line) in rows.enumerated() {
                 for (column, character) in line.enumerated() where character == "#" {
-                    let rect = NSRect(x: particle.position.x * scale + CGFloat(column) * pip,
-                                      y: particle.position.y * scale + CGFloat(row) * pip,
+                    let rect = NSRect(x: originX + CGFloat(column) * pip,
+                                      y: originY + CGFloat(row) * pip,
                                       width: pip, height: pip)
                     ctx.fill(rect)
                 }
