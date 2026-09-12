@@ -41,6 +41,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let particles = ParticleField()
     private let birthdayLetter = BirthdayLetter()
     private let hatching = Hatching()
+    /// Until she is out of the egg there is no bird to answer: the panel stays off
+    /// screen and every action is refused before it starts. Set the moment the hatching
+    /// animation hands her over — or immediately, if the art for it is missing.
+    private var hasHatched: Bool { sim.state.firstLaunchDone }
     private let interaction = InteractionWindow()
     private var interactionKind: InteractionWindow.Kind?
     private var hoopGame = HoopGame()
@@ -105,12 +109,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             forName: NSWorkspace.activeSpaceDidChangeNotification,
             object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated {
-                guard let self, !self.sim.state.hidden else { return }
+                guard let self, self.hasHatched, !self.sim.state.hidden else { return }
                 self.panel.showEverywhere()
             }
         }
 
-        retime(to: Self.awakeHz)
+        // The loop starts when she does. An egg has nothing to animate, nowhere to walk
+        // and no idleness to notice, and the hatching runs off a timer of its own — so
+        // on a first launch this is started by `onHatched` instead. Hunger loses nothing
+        // by it: `advance` charges real elapsed time whenever it is next called.
+        if hasHatched { retime(to: Self.awakeHz) }
         startHatchingIfNeeded()
     }
 
@@ -119,7 +127,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// The panel is ordered out for the duration, so there is no second Coco standing
     /// about while the first one is still hatching.
     private func startHatchingIfNeeded() {
-        guard !sim.state.firstLaunchDone else { return }
+        guard !hasHatched else { return }
         let screen = (panel.screen ?? NSScreen.main ?? NSScreen.screens[0]).visibleFrame
         panel.orderOut(nil)
         hatching.onHatched = { [weak self] point in
@@ -130,6 +138,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             self.sim.markFirstLaunchDone()
             self.store.save(self.sim.state)
             if !self.sim.state.hidden { self.panel.showEverywhere() }
+            self.retime(to: Self.awakeHz)
         }
         hatching.offer(on: screen)
     }
@@ -176,7 +185,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         driver = BehaviourDriver(sim: sim, sprites: sprites,
                                  canvasSize: panel.frame.size, scale: scale, start: start)
         panel.setFrameOrigin(driver.displayPosition)
-        if !sim.state.hidden, sim.state.firstLaunchDone { panel.showEverywhere() }
+        if hasHatched, !sim.state.hidden { panel.showEverywhere() }
     }
 
     private func buildStatusItem() {
@@ -315,9 +324,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         hideItem.title = sim.state.hidden ? "Show Coco" : "Hide Coco"
         // The eye says which way the item goes: struck through to put her away, open to
         // bring her back.
-        hideItem.image = menuGlyph(sim.state.hidden ? "show" : "hide", lit: true)
-        // Hidden she is not on screen; asleep she cannot react. Either way there is no
-        // Coco to turn her head away, so the items say so instead.
+        hideItem.image = menuGlyph(sim.state.hidden ? "show" : "hide", lit: hasHatched)
+        // There is nothing to put away while she is still in the egg, and bringing her
+        // back would stand a second Coco next to it.
+        hideItem.isEnabled = hasHatched
+        // Still in the egg she has not arrived; hidden she is not on screen; asleep she
+        // cannot react. In none of the three is there a Coco to turn her head away, so
+        // the items say so instead.
         let live = sim.canBeAsked
         for (item, glyph) in zip(actionItems, ["feed", "play", "sleep"]) {
             item.isEnabled = live
@@ -339,7 +352,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func startInteraction(_ kind: InteractionWindow.Kind) {
         interaction.finish()
-        guard !sim.state.hidden, sim.sleep == .awake else { return }
+        guard sim.canBeAsked else { return }
         if kind == .food, !sim.canFeed {
             driver.refuse()
             return
@@ -416,6 +429,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func sleepNow() {
         interaction.finish()
+        guard sim.canBeAsked else { return }
         sim.putToSleep(at: Date())
         particles.clear()
         showMood()
@@ -441,6 +455,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func toggleHidden() {
+        guard hasHatched else { return }
         interaction.finish()
         birthdayLetter.dismissInvitation()
         birthdayLetter.close()
@@ -476,13 +491,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     /// Swap the timer rather than checking a flag inside it: a sleeping bird should not
     /// wake the CPU ten times a second to decide it has nothing to do.
+    ///
+    /// `.common` rather than `scheduledTimer`, which is the default mode alone. An open
+    /// menu puts the run loop in event-tracking mode, and a default-mode timer stops
+    /// dead for as long as it is up: Coco froze mid-step every time her own menubar was
+    /// opened, which is precisely when someone is looking at her.
     private func retime(to hz: Double) {
         guard hz != runningHz || timer == nil else { return }
         runningHz = hz
         timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: 1 / hz, repeats: true) { [weak self] _ in
+        let ticker = Timer(timeInterval: 1 / hz, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.step() }
         }
+        RunLoop.main.add(ticker, forMode: .common)
+        timer = ticker
     }
 
     private func step() {
@@ -586,6 +608,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // MARK: - Interaction
 
     private func beginDrag() {
+        guard hasHatched else { return }
         interaction.finish()
         isDragging = true
         let mouse = NSEvent.mouseLocation
@@ -609,6 +632,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// Every path out of here must leave the dragged state. An early version only left
     /// it when the pet succeeded, so a refused pet froze Coco mid-air permanently.
     private func endDrag(wasClick: Bool) {
+        guard hasHatched else { return }
         isDragging = false
         grabOffset = nil
         let screen = (panel.screen ?? NSScreen.main ?? NSScreen.screens[0]).visibleFrame

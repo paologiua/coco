@@ -68,10 +68,12 @@ final class Simulation {
     ///
     /// Not the same as whether she would say yes. A refusal is something Coco DOES —
     /// she turns her head away — and that only works when there is a Coco on screen to
-    /// do it. Hidden she is not there; asleep she cannot react. In both cases the menu
-    /// items used to be live and do nothing whatsoever when clicked, which is worse
-    /// than either a refusal or a grey item.
-    var canBeAsked: Bool { !state.hidden && state.sleep == .awake }
+    /// do it. Still in the egg she has not arrived yet; hidden she is not there; asleep
+    /// she cannot react. In all three cases the menu items used to be live and do
+    /// nothing whatsoever when clicked, which is worse than either a refusal or a grey
+    /// item — and on the first launch it was worse still, because feeding an egg put
+    /// the bowl on screen for a bird who was not out of it.
+    var canBeAsked: Bool { state.firstLaunchDone && !state.hidden && state.sleep == .awake }
 
     init(state: SavedState) {
         self.state = state

@@ -23,8 +23,6 @@ final class Hatching {
     /// Called once she is out, with the point on screen her feet ended on.
     var onHatched: ((CGPoint) -> Void)?
 
-    var isRunning: Bool { notice != nil || stage != nil }
-
     /// Put the egg in front of her. Deliberately has no timeout and cannot be dismissed
     /// by clicking away: everything else in the app can be ignored, but this is the only
     /// route into owning a Coco at all, and a notice you can lose by clicking the wrong

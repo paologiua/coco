@@ -45,9 +45,17 @@ Something the human does *to* Coco that raises a Need.
 
 An Action Coco does not currently want is **refused in character** — she turns her head
 away — never greyed out. That holds while there is a Coco on screen to do the refusing.
-**Hidden or asleep she cannot answer at all**, and those menu items are disabled: not
-because she would say no, but because there is nobody there to say it. Left live they did
-nothing whatsoever when clicked, which is worse than either.
+**Unhatched, hidden or asleep she cannot answer at all**, and those menu items are
+disabled: not because she would say no, but because there is nobody there to say it. Left
+live they did nothing whatsoever when clicked, which is worse than either.
+
+Unhatched is the strongest of the three. Petting goes with it, and so does Hide: until she
+is out of the egg there is no bird on screen to click, to drag, or to put away. A first
+launch is an egg and a single click on it, and that click is the only one the app answers.
+
+Nothing is running behind it either — the loop starts when she does. The hours an egg
+sits unhatched are charged to Hunger the moment she comes out, exactly as any other hours
+the app was not running are.
 
 ## Behaviour
 

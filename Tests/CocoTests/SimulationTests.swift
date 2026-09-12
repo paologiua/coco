@@ -13,6 +13,12 @@ struct SimulationTests {
         return Simulation(state: state)
     }
 
+    /// A Coco who is out of the egg — which is every state but a first launch, and so
+    /// the right starting point for anything about what she will and will not do.
+    func hatched(_ mutate: (inout SavedState) -> Void = { _ in }) -> Simulation {
+        sim { $0.firstLaunchDone = true; mutate(&$0) }
+    }
+
     func hours(_ n: Double) -> Date { epoch.addingTimeInterval(n * 3600) }
 
     // MARK: - Decay
@@ -273,24 +279,40 @@ struct SimulationTests {
 
         // Awake and on screen: every action is live, including the ones she will refuse.
         // Refusing is something she DOES, and a grey menu item would say it worse.
-        let ready = sim { $0.needs.hunger = 100 }
+        let ready = hatched { $0.needs.hunger = 100 }
         #expect(ready.canBeAsked)
         #expect(ready.feed() == .refused(.notHungry))
 
         // Asleep she cannot turn her head away, so there is nothing to see.
-        let sleeping = sim { $0.sleep = .deep }
+        let sleeping = hatched { $0.sleep = .deep }
         #expect(!sleeping.canBeAsked)
 
         // Hidden she is not on the screen at all.
-        let hidden = sim { $0.hidden = true }
+        let hidden = hatched { $0.hidden = true }
         #expect(!hidden.canBeAsked)
 
         // And hiding her mid-session takes the actions with her.
-        let visible = sim { _ in }
+        let visible = hatched { _ in }
         #expect(visible.canBeAsked)
         visible.setHidden(true)
         #expect(!visible.canBeAsked)
         _ = now
+    }
+
+    @Test func anEggCannotBeAskedForAnything() {
+        // A fresh state is an unhatched one, which is the whole of a first launch.
+        let egg = sim { _ in }
+        #expect(!egg.canBeAsked)
+
+        // Awake and not hidden — the two old conditions both pass, and it still must
+        // not be askable: feeding an egg used to put the bowl on screen for a bird who
+        // was not out of it yet.
+        #expect(egg.sleep == .awake)
+        #expect(!egg.state.hidden)
+
+        // She becomes askable at exactly the moment the hatching hands her over.
+        egg.markFirstLaunchDone()
+        #expect(egg.canBeAsked)
     }
 
     @Test func pokingASleepingBirdLeavesHerAsleep() {
