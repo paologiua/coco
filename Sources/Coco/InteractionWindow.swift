@@ -108,10 +108,26 @@ final class InteractionWindow {
             if let panel {
                 let origin = CGPoint(x: mouse.x - panel.frame.width / 2,
                                      y: mouse.y - panel.frame.height / 2)
-                panel.setFrameOrigin(origin)
-                backPanel?.setFrameOrigin(origin)
+                let snapped = Self.onDevicePixels(origin, of: panel)
+                panel.setFrameOrigin(snapped)
+                backPanel?.setFrameOrigin(snapped)
             }
         }
+    }
+
+    /// The nearest origin that puts the artwork on whole device pixels.
+    ///
+    /// The prop follows a pointer reported in points and freely fractional, and it is
+    /// centred on it — and the hoop's panel is an odd number of points wide, so half of
+    /// it is a half. Between the two, the window landed part of a device pixel off the
+    /// grid, and nearest-neighbour sampling then had to split art pixels across device
+    /// pixels: the ring came out soft, and softened differently every time the mouse
+    /// moved, which is the shimmer. Drawing it with no interpolation is not enough on
+    /// its own — a pixel can only stay hard if it lands on whole ones.
+    private static func onDevicePixels(_ origin: CGPoint, of panel: NSWindow) -> CGPoint {
+        let backing = (panel.screen ?? NSScreen.main)?.backingScaleFactor ?? 2
+        return CGPoint(x: (origin.x * backing).rounded() / backing,
+                       y: (origin.y * backing).rounded() / backing)
     }
 
     func finish(completed: Bool = false) {
@@ -151,6 +167,21 @@ final class TargetView: NSView {
     /// to sit that is not on top of the ring.
     var verticalPad: CGFloat = 0
 
+    /// Where the arc in front of Coco is cut from the arc behind her, rounded to a
+    /// whole art pixel.
+    ///
+    /// Halfway across an odd number of pixels falls INSIDE the middle one, and the ring
+    /// is 21 wide: clipping there sliced that column down its length, half of it drawn
+    /// in the near window and half in the far one. Over the crown of the ring, where
+    /// the band crosses the middle, that is a hairline seam through the drawing.
+    var seam: CGFloat {
+        guard let pixels = image?.representations.first?.pixelsWide, pixels > 0 else {
+            return bounds.midX
+        }
+        let pip = bounds.width / CGFloat(pixels)
+        return (bounds.midX / pip).rounded() * pip
+    }
+
     override func draw(_ dirtyRect: NSRect) {
         NSGraphicsContext.current?.imageInterpolation = .none
         NSGraphicsContext.current?.saveGraphicsState()
@@ -161,21 +192,42 @@ final class TargetView: NSView {
             break
         case .left:
             NSRect(x: bounds.minX, y: bounds.minY,
-                   width: bounds.width / 2, height: bounds.height).clip()
+                   width: seam, height: bounds.height).clip()
         case .right:
-            NSRect(x: bounds.midX, y: bounds.minY,
-                   width: bounds.width / 2, height: bounds.height).clip()
+            NSRect(x: seam, y: bounds.minY,
+                   width: bounds.maxX - seam, height: bounds.height).clip()
         }
-        image?.draw(in: art, from: .zero, operation: .sourceOver, fraction: 1)
+        // The hint as well as the context's setting, exactly as `SpriteView` draws her:
+        // nearest is never the default anywhere in the stack and has to be asked for.
+        image?.draw(in: art, from: .zero, operation: .sourceOver, fraction: 1,
+                    respectFlipped: true,
+                    hints: [.interpolation: NSImageInterpolation.none.rawValue])
         NSGraphicsContext.current?.restoreGraphicsState()
         if showsCounter {
-            let label = "\(passes) / 3"
-            let attributes: [NSAttributedString.Key: Any] = [
-                .font: NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .bold),
-                .foregroundColor: NSColor.white,
-                .backgroundColor: NSColor.black.withAlphaComponent(0.8)
-            ]
-            (label as NSString).draw(at: CGPoint(x: 4, y: 2), withAttributes: attributes)
+            counterLabel.draw(at: counterOrigin, withAttributes: Self.counterAttributes)
         }
+    }
+
+    var counterLabel: NSString { "\(passes) / 3" as NSString }
+
+    static let counterAttributes: [NSAttributedString.Key: Any] = [
+        .font: NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .bold),
+        .foregroundColor: NSColor.white,
+        .backgroundColor: NSColor.black.withAlphaComponent(0.8)
+    ]
+
+    /// Where the count is drawn: centred under the ring, in the band of empty panel
+    /// that `counterPad` reserves for it.
+    ///
+    /// It used to be pinned four points in from the bottom left, which is the corner of
+    /// the PANEL rather than of the drawing — and the panel is wider than the count is,
+    /// so the number sat off to one side of the ring it is counting for.
+    ///
+    /// Rounded to whole points: the panel is snapped to the device grid so the ring
+    /// stays hard, and half a point of drift here would be spent softening the digits.
+    var counterOrigin: CGPoint {
+        let size = counterLabel.size(withAttributes: Self.counterAttributes)
+        return CGPoint(x: ((bounds.width - size.width) / 2).rounded(),
+                       y: ((verticalPad - size.height) / 2).rounded())
     }
 }
