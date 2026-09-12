@@ -135,6 +135,27 @@ final class BehaviourDriver {
                           + (Double(Canvas.height) - centre.y) * scale)
     }
 
+    /// Window positions that keep her DRAWING on screen, rather than her window.
+    ///
+    /// The window is 209 points tall and she occupies 82 of them: there are 41 points
+    /// of sky over her head for particles and 26 below her feet for a dipping wingtip.
+    /// Clamping the window to the screen therefore walled her body out of the top 168
+    /// points of it and off about fifty at each side — so a hoop held high was
+    /// somewhere she could not go, and she stopped short of it and hung there.
+    func originBounds(in screen: NSRect) -> (x: ClosedRange<Double>, y: ClosedRange<Double>) {
+        let box = sprites.idle.drawnBounds
+        let stage = Double(Canvas.stageHeight)
+        let sky = Double(Canvas.particleHeadroom)
+        // Distance from the window's bottom edge up to her head and to her feet.
+        let toHead = (stage - sky - box.minY) * scale
+        let toFeet = (stage - sky - box.maxY) * scale
+        let loX = screen.minX - box.minX * scale
+        let hiX = max(loX, screen.maxX - box.maxX * scale)
+        let loY = screen.minY - toFeet
+        let hiY = max(loY, screen.maxY - toHead)
+        return (loX...hiX, loY...hiY)
+    }
+
     /// Beside her head, in stage pixels, for particles to rise from.
     ///
     /// Derived from the drawing rather than written down: it was a pair of constants
@@ -155,9 +176,8 @@ final class BehaviourDriver {
     /// or it is asking for a place she cannot stand.
     func reachableCentreX(in screen: NSRect) -> ClosedRange<Double> {
         let offset = bodyCentre.x - position.x
-        let lo = screen.minX + offset
-        let hi = max(lo, screen.maxX - canvasSize.width + offset)
-        return lo...hi
+        let bounds = originBounds(in: screen).x
+        return (bounds.lowerBound + offset)...(bounds.upperBound + offset)
     }
 
     /// Where to actually put the window: the accumulated position plus the vertical bob
@@ -201,25 +221,27 @@ final class BehaviourDriver {
             sleepingPerch = nil
             sleepLanding = nil
             startledUntil = now.addingTimeInterval(1.2)
-            flyTo(CGPoint(x: min(max(position.x + 100, screen.minX),
-                                max(screen.minX, screen.maxX - canvasSize.width)),
-                          y: min(position.y + 100, max(screen.minY, screen.maxY - canvasSize.height))))
+            let limit = originBounds(in: screen)
+            flyTo(CGPoint(x: min(max(position.x + 100, limit.x.lowerBound), limit.x.upperBound),
+                          y: min(position.y + 100, limit.y.upperBound)))
             return
         }
 
         // Travel to a perch before showing the sleeping pose.
         if sim.sleep != .awake {
             if sleepLanding == nil {
-                sleepLanding = CGPoint(x: min(max(position.x, screen.minX),
-                                             max(screen.minX, screen.maxX - canvasSize.width)),
+                let limit = originBounds(in: screen).x
+                sleepLanding = CGPoint(x: min(max(position.x, limit.lowerBound), limit.upperBound),
                                        y: screen.minY)
-                let centre = position.x + canvasSize.width / 2
+                // Her middle, not the window's: the window is twice her width, so its
+                // centre drifts off her and picked the perch beside the one under her.
+                let centre = bodyCentre.x
                 // The frontmost eligible window beneath her wins. If geometry is
                 // unavailable or there is no room above it, use the screen floor.
                 if let perch = availablePerches.first(where: {
                     $0.frame.minX <= centre && centre <= $0.frame.maxX &&
                     $0.frame.maxY <= position.y + 5 && $0.frame.maxY >= screen.minY &&
-                    $0.frame.maxY + canvasSize.height <= screen.maxY
+                    $0.frame.maxY + sprites.idle.drawnBounds.height * scale <= screen.maxY
                 }) {
                     sleepingPerch = perch
                     sleepLanding?.y = perch.frame.maxY
@@ -248,10 +270,10 @@ final class BehaviourDriver {
             // of the canvas, which she does not occupy and which drifts from her as
             // the wings change span.
             let offset = CGPoint(x: bodyCentre.x - position.x, y: bodyCentre.y - position.y)
-            let desired = CGPoint(x: min(max(point.x - offset.x, screen.minX),
-                                        max(screen.minX, screen.maxX - canvasSize.width)),
-                                  y: min(max(point.y - offset.y, screen.minY),
-                                         max(screen.minY, screen.maxY - canvasSize.height)))
+            let limit = originBounds(in: screen)
+            let desired = CGPoint(
+                x: min(max(point.x - offset.x, limit.x.lowerBound), limit.x.upperBound),
+                y: min(max(point.y - offset.y, limit.y.lowerBound), limit.y.upperBound))
             // Once she has stopped beside the food she waits, and bringing the hand
             // closer must not move her: a standoff kept against an approaching cursor
             // retreats exactly as fast as you advance, so she can never be fed and
@@ -309,8 +331,9 @@ final class BehaviourDriver {
         guard behaviour == .resting || behaviour == .walking else { return false }
         let centre = bodyCentre
         guard hypot(centre.x - cursor.x, centre.y - cursor.y) < Self.personalSpace else { return false }
-        let leftEdge = screen.minX + 20
-        let rightEdge = max(leftEdge, screen.maxX - canvasSize.width - 20)
+        let limit = originBounds(in: screen).x
+        let leftEdge = limit.lowerBound + 20
+        let rightEdge = max(leftEdge, limit.upperBound - 20)
         var away = cursor.x > centre.x ? leftEdge : rightEdge
         // Away from the hand — unless she is already against that edge. Then "away" is
         // a move of a few points, she lands still inside your reach, startles again,
@@ -326,7 +349,7 @@ final class BehaviourDriver {
         // also makes her easier to catch up with if that was the point.
         if Double.random(in: 0...1) < 0.4 {
             running = true
-            walkTo(x: min(max(away, screen.minX), max(screen.minX, screen.maxX - canvasSize.width)))
+            walkTo(x: min(max(away, limit.lowerBound), limit.upperBound))
         } else {
             flyTo(CGPoint(x: away, y: screen.minY + Double.random(in: 0...(screen.height * 0.30))))
         }
@@ -356,15 +379,19 @@ final class BehaviourDriver {
 
     private func nearbyX(in screen: NSRect) -> Double {
         let drift = Double.random(in: -220...220)
-        return min(max(position.x + drift, screen.minX), screen.maxX - canvasSize.width)
+        let limit = originBounds(in: screen).x
+        return min(max(position.x + drift, limit.lowerBound), limit.upperBound)
     }
 
     private func edgeBiasedX(in screen: NSRect) -> Double {
-        let usable = screen.width - canvasSize.width
+        // Against her drawing, not her window: measured on the window she stopped fifty
+        // points short of each edge, so a bird whose whole point is that she keeps to
+        // the edges never reached one.
+        let limit = originBounds(in: screen).x
         let t = Double.random(in: 0...1) < Self.edgeBias
             ? (Bool.random() ? Double.random(in: 0...0.28) : Double.random(in: 0.72...1))
             : Double.random(in: 0.28...0.72)
-        return screen.minX + usable * t
+        return limit.lowerBound + (limit.upperBound - limit.lowerBound) * t
     }
 
     private func advanceTowardsTarget(dt: Double, speed: Double) {

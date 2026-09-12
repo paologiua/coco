@@ -17,13 +17,16 @@ struct BehaviourTests {
         let image = NSImage(size: Canvas.size)
         image.lockFocus()
         NSColor.green.setFill()
-        // Anchored left, so a bigger inset moves the drawn CENTRE right. Insetting both
-        // sides leaves the centre where it was, which is exactly the jitter this needs
-        // to reproduce: the real flight frames' centres differ by about ten points
-        // across a wingbeat.
-        NSRect(x: inset, y: lift,
-               width: Canvas.size.width - inset,
-               height: Canvas.size.height - lift).fill()
+        // Shaped like the real thing rather than filling the canvas: she occupies about
+        // 105 by 82 of a 208 by 168 canvas, sitting on the floor margin with sky above
+        // her head. A fixture that fills the canvas hides every bug about the gap
+        // between her drawing and her window — which is most of the geometry here.
+        //
+        // `inset` is anchored left so a bigger one moves the drawn CENTRE right, and
+        // `lift` does the same vertically: the real flight frames' centres differ by
+        // about ten points across a wingbeat, and a fixture where they do not differ
+        // proves nothing about the code that has to cope with it.
+        NSRect(x: 51 + inset, y: 27 + lift, width: 105 - inset, height: 81 - lift).fill()
         image.unlockFocus()
         return try #require(Sprite(name: name, source: image))
     }
@@ -106,6 +109,37 @@ struct BehaviourTests {
             if game.passes >= 1 { scored = true; break }
         }
         #expect(scored, "non ha mai attraversato l'anello in 60 secondi")
+    }
+
+    @Test func theHoopIsPlayableHighOnTheScreen() throws {
+        // Her window is 209 points tall and she fills 82 of them, so clamping the
+        // WINDOW to the screen walled her body out of the top 168 points of it. Held up
+        // there the hoop was somewhere she could not go: she stopped a hundred points
+        // short, gave up, and hung in the air well below the ring — reported as
+        // stopping as soon as she reached it and never centring on it.
+        // Not right against the top: she is 82 points tall, so a ring centred within
+        // about 66 of the edge would need her head off the screen, and that is a real
+        // limit rather than a bug. These two sit inside it, and both were out of reach
+        // when the window rather than the bird was being kept on screen.
+        for y in [screen.maxY - 200, screen.maxY - 130] {
+            let sim = Simulation(state: .fresh(now: now))
+            let driver = try makeDriver(sim)
+            var game = HoopGame()
+            let hoop = CGPoint(x: 500, y: y)
+            driver.interactionStyle = .chase
+            var closest = Double.infinity
+            for i in 0..<1200 {
+                driver.interactionTarget = game.target(bird: driver.bodyCentre, hoop: hoop,
+                                                       scale: Double(AppDelegate.hoopScale),
+                                                       reach: driver.reachableCentreX(in: screen))
+                driver.tick(dt: 0.05, now: now.addingTimeInterval(Double(i) * 0.05),
+                            cursor: CGPoint(x: -9000, y: -9000), screen: screen)
+                closest = min(closest, abs(driver.bodyCentre.y - hoop.y))
+                if game.passes >= 1 { break }
+            }
+            #expect(game.passes >= 1,
+                    "anello a y=\(Int(y)): mai attraversato, si e' fermata a \(Int(closest)) punti")
+        }
     }
 
     @Test func anImpossibleHoopLeavesHerOnTheFloorNotInTheAir() throws {
