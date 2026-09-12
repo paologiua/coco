@@ -30,6 +30,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusBlock: StatusView!
     private let settings = SettingsWindow()
     private var hideItem: NSMenuItem!
+    /// The three she can be asked for. Held so the menu can grey them itself.
+    private var actionItems: [NSMenuItem] = []
     private let particles = ParticleField()
     private let bubble = BubbleWindow()
     private let birthdayLetter = BirthdayLetter()
@@ -219,9 +221,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         blockItem.view = statusBlock
         menu.addItem(blockItem)
         menu.addItem(.separator())
-        menu.addItem(action("Feed", #selector(feed)))
-        menu.addItem(action("Play", #selector(playWith)))
-        menu.addItem(action("Sleep", #selector(sleepNow)))
+        // Enabled by hand rather than by AppKit's automatic validation. That route
+        // needs `validateMenuItem` visible to the Objective-C runtime, which a plain
+        // Swift method is not — it compiled, it was never called, and the items stayed
+        // live. Setting them here is one line longer and cannot silently stop working.
+        menu.autoenablesItems = false
+        actionItems = [action("Feed", #selector(feed)),
+                       action("Play", #selector(playWith)),
+                       action("Sleep", #selector(sleepNow))]
+        actionItems.forEach(menu.addItem)
         menu.addItem(.separator())
         hideItem = action("Hide Coco", #selector(toggleHidden))
         menu.addItem(hideItem)
@@ -243,22 +251,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     // MARK: - Menu
 
-    /// Grey out only what she cannot answer at all.
-    ///
-    /// Feed when she is full and Play when she is worn out stay LIVE on purpose: she
-    /// answers those herself by turning away, which says something a grey item cannot.
-    /// Hidden or asleep is different — there is nobody there to turn away — so those
-    /// are the ones that go grey.
-    func validateMenuItem(_ item: NSMenuItem) -> Bool {
-        guard let sim else { return true }
-        switch item.action {
-        case #selector(feed), #selector(playWith), #selector(sleepNow):
-            return sim.canBeAsked
-        default:
-            return true
-        }
-    }
-
     func menuWillOpen(_ menu: NSMenu) {
         interaction.finish()
         statusBlock.moodImage = moodIcons[sim.mood.rawValue]
@@ -266,6 +258,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         statusBlock.moodLabel = describe(sim.mood)
         statusBlock.needsDisplay = true
         hideItem.title = sim.state.hidden ? "Show Coco" : "Hide Coco"
+        // Hidden she is not on screen; asleep she cannot react. Either way there is no
+        // Coco to turn her head away, so the items say so instead.
+        actionItems.forEach { $0.isEnabled = sim.canBeAsked }
     }
 
     private func describe(_ mood: Mood) -> String {
