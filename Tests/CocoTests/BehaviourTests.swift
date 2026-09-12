@@ -330,6 +330,25 @@ struct BehaviourTests {
         #expect(driver.interactionTarget == nil)
     }
 
+    /// The birthday shower was aimed with constants measured on the old 64-wide
+    /// canvas. On a 208-wide one they put all fourteen pieces in one stack, low and
+    /// well to the side of the bird they were meant to fall on.
+    @Test func birthdayConfettiFallsOverTheBirdAndNotInOneStack() throws {
+        let sim = Simulation(state: .fresh(now: now))
+        let driver = try makeDriver(sim)
+        let box = driver.sprites.idle.drawnBounds
+        let band = driver.confettiSource
+
+        // Across her, so the shower covers the bird instead of piling on a point.
+        #expect(band.minX >= box.minX && band.maxX <= box.maxX)
+        #expect(band.width > box.width / 2)
+        // And above her head. Stage y grows downward, and her head is the top of the
+        // drawing once the particles' headroom is added.
+        let head = Double(Canvas.particleHeadroom) + box.minY
+        #expect(band.maxY < head)
+        #expect(band.minY >= 0)
+    }
+
     @Test func feedingDoesNotTurnTheWaitingHandIntoAThreat() throws {
         let sim = Simulation(state: {
             var state = SavedState.fresh(now: now)

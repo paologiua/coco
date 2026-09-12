@@ -86,8 +86,17 @@ final class ParticleField {
         queueClock = Self.queueInterval        // so the first one appears at once
     }
 
-    func burst(_ kind: Kind, count: Int, at point: CGPoint) {
-        for _ in 0..<count { emit(kind, at: point) }
+    /// Emit all at once, scattered across a band rather than stacked on a point.
+    ///
+    /// The space counterpart of `stagger`, and for the same reason: fourteen pieces of
+    /// confetti from one spot are one piece fourteen times over. Confetti is the case
+    /// staggering cannot serve — a shower that trickles out over eight seconds is not a
+    /// shower — so it is spread sideways instead.
+    func burst(_ kind: Kind, count: Int, across band: CGRect) {
+        for _ in 0..<count {
+            emit(kind, at: CGPoint(x: Double.random(in: band.minX...band.maxX),
+                                   y: Double.random(in: band.minY...band.maxY)))
+        }
     }
 
     /// Sleeping emits on its own clock, so the caller only has to say "still asleep".

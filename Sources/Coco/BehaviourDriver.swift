@@ -207,6 +207,24 @@ final class BehaviourDriver {
         return CGPoint(x: x, y: Double(Canvas.particleHeadroom) + box.minY + 3)
     }
 
+    /// The band above her head that birthday confetti falls from, in stage pixels.
+    ///
+    /// Derived, for the same reason `emissionPoint` is: the burst used a pair of
+    /// constants measured against the old 64-wide canvas, and on a 208-wide one the
+    /// whole shower arrived in a single stack low and to her left, nowhere near the
+    /// bird.
+    ///
+    /// A band rather than a point because confetti is the one mark that cannot be
+    /// staggered — it is meant to arrive all at once — so it is spread in space
+    /// instead, across her drawn width. It starts clear of her head so the pieces are
+    /// seen falling ONTO her rather than out of her.
+    var confettiSource: CGRect {
+        let box = sprites.idle.drawnBounds
+        let clearance = Double(ParticleField.pip) * 4
+        let top = Double(Canvas.particleHeadroom) + box.minY - clearance
+        return CGRect(x: box.minX, y: top, width: box.width, height: clearance / 2)
+    }
+
     /// The band her body centre can actually be moved into on this screen.
     ///
     /// Not the screen: the window is wider than she is and is clamped to the screen, so

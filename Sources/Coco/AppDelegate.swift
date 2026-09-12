@@ -601,7 +601,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if outcome == .done {
             driver.acceptPetting()
             if sim.isBirthday(on: Date()) {
-                particles.burst(.confetti, count: 14, at: CGPoint(x: 32, y: 4))
+                particles.burst(.confetti, count: 14, across: driver.confettiSource)
             } else {
                 particles.stagger(.heart, count: 3, at: emissionPoint)
             }
