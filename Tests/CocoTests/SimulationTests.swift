@@ -241,17 +241,21 @@ struct SimulationTests {
 
     // MARK: - Birthday
 
-    @Test func birthdayMessageShowsOncePerYearButTheDayLastsAllDay() {
+    @Test func theBirthdayLastsTheWholeDay() {
         var comps = DateComponents()
         comps.year = 2026; comps.month = 9; comps.day = 14; comps.hour = 10
-        let birthday = Calendar.current.date(from: comps)!
+        let morning = Calendar.current.date(from: comps)!
+        comps.hour = 23
+        let night = Calendar.current.date(from: comps)!
+        comps.day = 15; comps.hour = 10
+        let after = Calendar.current.date(from: comps)!
 
         let s = sim { $0.birthdayMonth = 9; $0.birthdayDay = 14 }
-        #expect(s.isBirthday(on: birthday))
-        #expect(s.shouldShowBirthdayMessage(on: birthday))
-        s.markBirthdayCelebrated(on: birthday)
-        #expect(!s.shouldShowBirthdayMessage(on: birthday))
-        #expect(s.isBirthday(on: birthday))
+        // No once-a-year latch any more: the birthday is a property of the date, and
+        // the letter can be opened as many times as she likes while it lasts.
+        #expect(s.isBirthday(on: morning))
+        #expect(s.isBirthday(on: night))
+        #expect(!s.isBirthday(on: after))
     }
 
     // MARK: - Persistence

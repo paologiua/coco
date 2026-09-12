@@ -42,6 +42,7 @@ cp "$BIN" "$APP/Contents/MacOS/$APP_NAME"
 cp -R "$ROOT/Assets/Sprites" "$APP/Contents/Resources/Sprites"
 cp -R "$ROOT/Assets/Menubar" "$APP/Contents/Resources/Menubar"
 cp -R "$ROOT/Assets/UI" "$APP/Contents/Resources/UI"
+cp -R "$ROOT/Assets/LetterAnim" "$APP/Contents/Resources/LetterAnim"
 # Plain text, not compiled in: the birthday message can be rewritten in later years
 # by editing this file inside the bundle, with no toolchain and no rebuild.
 cp -R "$ROOT/Assets/Text" "$APP/Contents/Resources/Text"

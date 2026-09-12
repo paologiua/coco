@@ -14,7 +14,9 @@ struct SavedState: Codable {
     var pettingGivenInWindow: Double
 
     var firstLaunchDone: Bool
-    /// The year the birthday message was last shown, so it shows once per year.
+    /// Unused. It tracked the year the birthday speech bubble was last shown; the
+    /// bubble is gone, replaced by the letter, which has no once-a-year latch. Kept so
+    /// that a state file written by an older build still decodes.
     var lastBirthdayCelebrated: Int?
     /// Month and day only — a birthday recurs, it is not a date.
     var birthdayMonth: Int?

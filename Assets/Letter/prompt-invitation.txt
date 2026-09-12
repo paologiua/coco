@@ -1,0 +1,27 @@
+Generate an image and save the resulting PNG to this exact path:
+/private/tmp/claude-501/-Users-paologiua-Projects-coco/c7b16e4a-01d4-47f1-8622-5396428a91ae/scratchpad/popup-raw.png
+
+Do not write any other files and do not modify any repository.
+
+The attached image is a frame from the pixel-art animation this notice belongs to. Match its drawing style exactly: the same cream paper, the same red-and-blue diagonal airmail border, the same thick dark outline, the same pixel size, the same palette.
+
+Use this prompt:
+
+---
+Pixel art UI notice, 1024x384: a single small horizontal card, centred, filling most of the frame with clear margins on all four sides.
+
+The card is a cream panel with a thick dark outline all the way round and a red-and-blue diagonal-striped airmail border just inside that outline, exactly like the envelope in the attached image.
+
+Inside the card, laid out on one line and vertically centred:
+- On the LEFT, a small closed airmail envelope with a red heart seal — the same envelope as in the attached image, drawn small.
+- To the RIGHT of it, in dark brown-black pixel lettering, exactly this English text on two lines, left aligned:
+
+Coco has something
+for you!
+
+REPRODUCE THAT TEXT EXACTLY, character for character. Do not translate it, do not rephrase it, do not add or drop a word. The lettering must be large and crisply legible — it is the point of the image.
+
+CRITICAL — TRUE pixel art: drawn on a grid of about 340 by 128 pixels and then scaled up so each "pixel" is a sharp square aligned to that grid. Visible square pixels, hard edges, but fine enough that the letters read cleanly. NO antialiasing, NO gradients, NO blur, NO glow, NO drop shadow.
+
+Background outside the card: solid flat magenta #FF00FF filling the whole canvas. No scenery, no sparkles, no shadow, no extra text.
+---

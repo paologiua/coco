@@ -32,6 +32,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var hideItem: NSMenuItem!
     private let particles = ParticleField()
     private let bubble = BubbleWindow()
+    private let birthdayLetter = BirthdayLetter()
     private let interaction = InteractionWindow()
     private var interactionKind: InteractionWindow.Kind?
     private var hoopGame = HoopGame()
@@ -39,7 +40,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// A line waiting to be said once Coco has actually landed. Showing it while she is
     /// still flying in would put the bubble beside an empty patch of screen.
     private var pendingLine: String?
-    private var pendingIsBirthday = false
     /// Latched from the advance that noticed the absence, because the next tick's
     /// advance immediately clears the flag on the simulation.
     private var sawLongAbsence = false
@@ -367,6 +367,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func toggleHidden() {
         interaction.finish()
+        birthdayLetter.dismissInvitation()
+        birthdayLetter.close()
         bubble.hide()
         sim.setHidden(!sim.state.hidden)
         if sim.state.hidden { panel.orderOut(nil) } else { panel.showEverywhere() }
@@ -418,7 +420,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             queueReunionIfNeeded()
             updateNapFromMachineIdle()
             showMood()
-            checkBirthday(now: now)
         }
         if ticks % Int(runningHz * 60) == 0 {
             // A force-quit or a crash should cost a minute of Coco's life, not all of it.
@@ -463,18 +464,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         retime(to: driver.behaviour == .sleeping ? Self.asleepHz : Self.awakeHz)
     }
 
-    /// Checked every second rather than by a midnight timer: the app is already awake
-    /// once a second, and a date comparison is cheaper than a scheduled wake-up that
-    /// has to survive sleep, time zones and the clock being changed by hand.
-    private func checkBirthday(now: Date) {
-        guard sim.shouldShowBirthdayMessage(on: now), pendingLine == nil else { return }
-        // Fall back to a built-in line rather than nothing: on the single day this app
-        // exists for, an unreadable file must not cost the message.
-        pendingLine = text(named: "birthday") ?? "Happy birthday!"
-        pendingIsBirthday = true
-        NSLog("Coco: birthday line queued")
-    }
-
     private func deliverPendingLine() {
         guard let line = pendingLine, interactionKind == nil, driver.hasLanded, !sim.state.hidden else { return }
         pendingLine = nil
@@ -483,14 +472,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         bubble.show(line, above: panel.frame, on: screen, seconds: seconds)
         driver.stay(for: seconds)
 
-        if pendingIsBirthday {
-            pendingIsBirthday = false
-            // Marked only once it has actually been SEEN. Marking it when it was merely
-            // scheduled meant one failure to display cost the whole year — which is the
-            // one failure this app cannot afford.
-            sim.markBirthdayCelebrated(on: Date())
-            store.save(sim.state)
-        }
     }
 
     /// Just above and beside her head, on whichever side she is facing, in stage
@@ -570,6 +551,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         if wasClick, sim.pet(at: Date()) == .done {
             driver.acceptPetting()
+            // On the birthday, every single stroke offers the letter again. It is one
+            // day a year and she can read it as often as she likes.
+            if sim.isBirthday(on: Date()) {
+                birthdayLetter.offer(on: screen)
+            }
             if sim.isBirthday(on: Date()) {
                 particles.burst(.confetti, count: 14, at: CGPoint(x: 32, y: 4))
             } else {

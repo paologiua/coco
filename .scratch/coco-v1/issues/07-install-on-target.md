@@ -160,3 +160,26 @@ Worth considering before the gift: a fallback that does not depend on the status
 for example, refusing to persist `hidden` across a relaunch, so quitting and reopening
 always brings her back. Not decided here; recorded because it is cheap insurance on the
 one machine we cannot debug remotely.
+
+### 2026-09-12 — The birthday is now a letter, and it must be configured or it never appears
+
+The birthday speech bubble is gone. In its place: on the birthday, every time Coco is
+petted, a pixel-art card appears in the middle of the screen — "Coco has something for
+you!" — and clicking it before it fades plays the envelope opening and ends on a full
+letter with the personal message. A close box sits in its top-left corner.
+
+This raises the stakes on step 4 of the rehearsal rather than changing it. Before, a
+missing birthday cost a speech bubble. Now it costs the whole letter, which is the gift.
+Setting the birthday in Settings on her machine, and confirming it survives a relaunch,
+is the single check this install cannot skip.
+
+Also worth knowing at the machine:
+
+- The invitation appears on EVERY pet, all day, including after she has read it. That is
+  deliberate — she can reopen the letter as often as she likes.
+- It only follows a pet that actually lands. Asleep, or past the hourly petting cap, she
+  refuses, and no card appears. If the letter seems not to work on the day, check she is
+  awake first.
+- The letter is sized to the screen height, so it is readable on the 14-inch display it
+  was drawn for. It has not been seen on her machine.
+

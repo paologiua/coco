@@ -222,17 +222,6 @@ final class Simulation {
         return today.month == birthday.month && today.day == birthday.day
     }
 
-    /// The personal message shows once a year. Tracked BY YEAR rather than by a flag,
-    /// so it still fires if the app was already running when midnight passed.
-    func shouldShowBirthdayMessage(on date: Date, calendar: Calendar = .current) -> Bool {
-        guard isBirthday(on: date, calendar: calendar) else { return false }
-        return state.lastBirthdayCelebrated != calendar.component(.year, from: date)
-    }
-
-    func markBirthdayCelebrated(on date: Date, calendar: Calendar = .current) {
-        state.lastBirthdayCelebrated = calendar.component(.year, from: date)
-    }
-
     func markFirstLaunchDone() {
         state.firstLaunchDone = true
     }
