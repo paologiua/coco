@@ -9,8 +9,11 @@ import AppKit
 /// the wrong moment.
 @MainActor
 final class BirthdayLetter {
-    /// How long the invitation waits to be clicked before it gives up.
-    private static let invitationSeconds = 7.0
+    /// How long the invitation stays at full strength before it starts to go.
+    private static let invitationSeconds = 3.2
+    /// And how long it takes to fade out once it does. It stays clickable the whole
+    /// way down — a card you can see is a card you can still reach.
+    private static let invitationFade = 1.1
     /// Frames per second for the envelope opening.
     ///
     /// Six, not twelve. At twelve the nineteen frames were over in a second and a half
@@ -45,6 +48,7 @@ final class BirthdayLetter {
 
         let size = Self.fit(image.size, into: CGSize(width: 460, height: 200))
         let panel = Self.makePanel(size: size, on: screen, level: 2)
+        panel.alphaValue = 1
         let view = ClickableImageView(frame: NSRect(origin: .zero, size: size))
         view.image = image
         view.onClick = { [weak self] in self?.open(on: screen) }
@@ -52,10 +56,25 @@ final class BirthdayLetter {
         panel.orderFrontRegardless()
         invitation = panel
 
-        invitationTimer = Timer.scheduledTimer(withTimeInterval: Self.invitationSeconds,
-                                               repeats: false) { [weak self] _ in
-            MainActor.assumeIsolated { self?.dismissInvitation() }
+        // Faded rather than switched off. A card that simply stops existing reads as a
+        // glitch; one that dims reads as a moment passing.
+        var elapsed = 0.0
+        let tick = 1.0 / 60
+        let timer = Timer(timeInterval: tick, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self, let panel = self.invitation else { return }
+                elapsed += tick
+                let over = elapsed - Self.invitationSeconds
+                guard over > 0 else { return }
+                if over >= Self.invitationFade {
+                    self.dismissInvitation()
+                } else {
+                    panel.alphaValue = 1 - over / Self.invitationFade
+                }
+            }
         }
+        invitationTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
     }
 
     func dismissInvitation() {
