@@ -22,8 +22,8 @@ swift build -c release --arch arm64
 BIN="$(swift build -c release --arch arm64 --show-bin-path)/$APP_NAME"
 
 # 2. Prove the deployment target landed.
-vtool -show-build-version "$BIN" | grep -q "minos 15.0" \
-  || { echo "FATAL: binary is not minos 15.0"; vtool -show-build-version "$BIN"; exit 1; }
+vtool -show-build-version "$BIN" | grep -q "minos 14.0" \
+  || { echo "FATAL: binary is not minos 14.0"; vtool -show-build-version "$BIN"; exit 1; }
 
 # 3. Guard against Bundle.module creeping back in. A resource bundle in the bin path
 #    means someone added `resources:` to Package.swift, which builds fine here and
@@ -77,7 +77,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
   $ICON_KEY
   <key>LSUIElement</key><true/>
-  <key>LSMinimumSystemVersion</key><string>15.0</string>
+  <key>LSMinimumSystemVersion</key><string>14.0</string>
   <key>NSHighResolutionCapable</key><true/>
 </dict></plist>
 PLIST

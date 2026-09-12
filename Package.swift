@@ -8,7 +8,7 @@ import PackageDescription
 // Bundle.main. See .scratch/coco-v1/issues/02-shipping-adhoc-app.md.
 let package = Package(
     name: "Coco",
-    platforms: [.macOS(.v15)],
+    platforms: [.macOS(.v14)],
     targets: [
         .executableTarget(name: "Coco", path: "Sources/Coco"),
         .testTarget(name: "CocoTests", dependencies: ["Coco"], path: "Tests/CocoTests"),
