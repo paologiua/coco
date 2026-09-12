@@ -50,9 +50,15 @@ final class StatusView: NSView {
     var moodLabel: String = ""
 
     private let icons: [String: NSImage]
+    /// The same three drawn with a lighter rim. The near-black one these ship with is
+    /// the dark menu's own background: it drops out, and the glyph left behind is a
+    /// different shape — the seed rounds off into an octagon, the heart loses the notch
+    /// between its lobes. Picked between at draw time, in `needIcon(_:)`.
+    private let darkIcons: [String: NSImage]
 
-    init(icons: [String: NSImage]) {
+    init(icons: [String: NSImage], darkIcons: [String: NSImage]) {
         self.icons = icons
+        self.darkIcons = darkIcons
         // The 48 is the sentence above the block and the margins around it, which are
         // the same whatever is in the block.
         super.init(frame: NSRect(x: 0, y: 0, width: Self.width,
@@ -94,10 +100,18 @@ final class StatusView: NSView {
         ]
         for (index, row) in rows.enumerated() {
             let y = rowsY + Double(index) * Self.rowHeight
-            icons[row.0]?.draw(in: NSRect(x: iconX, y: y,
-                                          width: Self.needIcon, height: Self.needIcon))
+            needIcon(row.0)?.draw(in: NSRect(x: iconX, y: y,
+                                             width: Self.needIcon, height: Self.needIcon))
             drawBar(value: row.1, colour: row.2, origin: NSPoint(x: barX, y: y + 4), width: barWidth)
         }
+    }
+
+    /// Whichever rim reads against the menu being drawn into. Asked here rather than
+    /// held, because the appearance can change under a running app and this view is
+    /// redrawn every time the menu opens.
+    private func needIcon(_ name: String) -> NSImage? {
+        let dark = NSAppearance.currentDrawing().bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        return (dark ? darkIcons[name] : icons[name]) ?? icons[name]
     }
 
     /// Ten discrete blocks rather than a smooth fill — a continuous bar beside a pixel

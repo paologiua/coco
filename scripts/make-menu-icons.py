@@ -119,7 +119,14 @@ EYE_CROSSED = """
 ................
 ................"""
 
+# Two rims, one drawing. The near-black rim is what gives these their weight on a
+# light menu, and on a dark one it IS the background: the outermost ring of every
+# glyph vanishes and what is left reads as a different shape — the hoop lost its caps
+# and came out a hexagon, the Z lost the top and bottom of its bars. So the dark menu
+# gets the same art with a rim light enough to survive it, still dark enough against
+# the fills to read as an outline rather than a halo.
 OUTLINE = "1B2E14"
+OUTLINE_DARK = "5A6B4E"
 N = 16
 
 ART = {
@@ -138,7 +145,7 @@ def rgb(h):
     return int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
 
 
-for name, (art, fill) in ART.items():
+def draw(name, art, fill, outline, suffix):
     grid = art.strip("\n").split("\n")
     assert len(grid) == N, f"{name}: {len(grid)} rows"
     assert all(len(row) == N for row in grid), f"{name}: a row is not {N} wide"
@@ -158,14 +165,20 @@ for name, (art, fill) in ART.items():
             rim = any((x + dx, y + dy) not in same
                       for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))
             if cell == "o":
-                colour = OUTLINE
+                colour = outline
             elif cell == "*":
-                colour = OUTLINE if rim else STRIKE
+                colour = outline if rim else STRIKE
             else:
-                colour = OUTLINE if rim else fill
+                colour = outline if rim else fill
             r, g, b = rgb(colour)
             rows.append(f"{x},{y}: ({r},{g},{b},255)")
     txt = f"# ImageMagick pixel enumeration: {N},{N},255,srgba\n" + "\n".join(rows) + "\n"
+    path = f"Assets/UI/menu_{name}{suffix}.png"
     subprocess.run(["magick", "txt:-", "-filter", "Point", "-resize", "200%",
-                    "-strip", f"PNG32:Assets/UI/menu_{name}.png"], input=txt.encode(), check=True)
-    print(f"Assets/UI/menu_{name}.png")
+                    "-strip", f"PNG32:{path}"], input=txt.encode(), check=True)
+    print(path)
+
+
+for name, (art, fill) in ART.items():
+    draw(name, art, fill, OUTLINE, "")
+    draw(name, art, fill, OUTLINE_DARK, "_dark")

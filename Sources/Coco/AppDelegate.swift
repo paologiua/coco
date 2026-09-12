@@ -34,6 +34,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var actionItems: [NSMenuItem] = []
     /// Full strength and faded, for every menu glyph. Held because the menu turns its
     /// own items off and has to fade their icons with them.
+    ///
+    /// Keyed by glyph name for a light menu and by `name_dark` for a dark one: the art
+    /// is the same, the rim is not. See `menuGlyph`.
     private var menuIcons: [String: (lit: NSImage, dim: NSImage)] = [:]
     private let particles = ParticleField()
     private let birthdayLetter = BirthdayLetter()
@@ -194,26 +197,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
 
         var needIcons: [String: NSImage] = [:]
+        var needIconsDark: [String: NSImage] = [:]
         for need in ["hunger", "affection", "energy"] {
-            if let url = Bundle.main.url(forResource: "need_\(need)", withExtension: "png",
-                                         subdirectory: "UI"),
-               let image = NSImage(contentsOf: url) {
+            for suffix in ["", "_dark"] {
+                guard let url = Bundle.main.url(forResource: "need_\(need)\(suffix)",
+                                                withExtension: "png", subdirectory: "UI"),
+                      let image = NSImage(contentsOf: url) else { continue }
                 image.size = NSSize(width: 18, height: 18)
-                needIcons[need] = image
+                if suffix.isEmpty { needIcons[need] = image } else { needIconsDark[need] = image }
             }
         }
-        statusBlock = StatusView(icons: needIcons)
+        statusBlock = StatusView(icons: needIcons, darkIcons: needIconsDark)
 
         // The menu's own glyphs, at the 16 points a menu item draws an image at. Drawn
         // on a 16 grid and shipped doubled, so a Retina menu lands one art pixel on
         // exactly four of its own.
+        //
+        // Both rims are loaded up front, light and dark. Which one an item shows is
+        // decided when the menu opens, because that is the only moment the appearance
+        // is known to be current.
         for glyph in ["feed", "play", "sleep", "hide", "show"] {
-            guard let url = Bundle.main.url(forResource: "menu_\(glyph)", withExtension: "png",
-                                            subdirectory: "UI"),
-                  let image = NSImage(contentsOf: url) else { continue }
-            image.isTemplate = false
-            image.size = NSSize(width: 16, height: 16)
-            menuIcons[glyph] = (image, faded(image))
+            for suffix in ["", "_dark"] {
+                guard let url = Bundle.main.url(forResource: "menu_\(glyph)\(suffix)",
+                                                withExtension: "png", subdirectory: "UI"),
+                      let image = NSImage(contentsOf: url) else { continue }
+                image.isTemplate = false
+                image.size = NSSize(width: 16, height: 16)
+                menuIcons[glyph + suffix] = (image, faded(image))
+            }
         }
 
         let menu = NSMenu()
@@ -252,8 +263,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // Only the things she does carry a glyph. Settings and Quit are the app's, not
         // hers, and giving those a pixel icon too would say they are the same kind of
         // thing as feeding her.
-        if let icon { item.image = menuIcons[icon]?.lit }
+        if let icon { item.image = menuGlyph(icon, lit: true) }
         return item
+    }
+
+    /// A menu glyph in the rim that suits the menu it is about to be drawn in.
+    ///
+    /// The near-black rim these are drawn with is what gives them their weight on a
+    /// light menu, and on a dark one it IS the background: the outer ring of every
+    /// glyph disappears and the shape that is left is not the one that was drawn — the
+    /// hoop came out a flat-topped hexagon, the Z lost the top and bottom of its bars.
+    /// The dark menu gets the same art with a rim light enough to survive it.
+    ///
+    /// Asked at draw time rather than cached: the appearance can change under a running
+    /// app, and a menu that opens after that has to answer for the appearance it is
+    /// opening in.
+    private func menuGlyph(_ name: String, lit: Bool) -> NSImage? {
+        let dark = NSApp.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        // The light rim is the fallback rather than nothing at all: an item with a
+        // hard-to-see glyph still reads, an item with no glyph looks like a different
+        // kind of item.
+        guard let icons = menuIcons[dark ? name + "_dark" : name] ?? menuIcons[name] else {
+            return nil
+        }
+        return lit ? icons.lit : icons.dim
     }
 
     /// A faded copy, for an item that is switched off.
@@ -282,13 +315,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         hideItem.title = sim.state.hidden ? "Show Coco" : "Hide Coco"
         // The eye says which way the item goes: struck through to put her away, open to
         // bring her back.
-        hideItem.image = menuIcons[sim.state.hidden ? "show" : "hide"]?.lit
+        hideItem.image = menuGlyph(sim.state.hidden ? "show" : "hide", lit: true)
         // Hidden she is not on screen; asleep she cannot react. Either way there is no
         // Coco to turn her head away, so the items say so instead.
         let live = sim.canBeAsked
         for (item, glyph) in zip(actionItems, ["feed", "play", "sleep"]) {
             item.isEnabled = live
-            item.image = live ? menuIcons[glyph]?.lit : menuIcons[glyph]?.dim
+            item.image = menuGlyph(glyph, lit: live)
         }
     }
 

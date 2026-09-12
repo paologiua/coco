@@ -57,7 +57,13 @@ ART = {
     "affection": (HEART, "5B62B8"),
     "energy": (BOLT, "E8CF3F"),
 }
+# One drawing, two rims. On a dark menu the near-black rim IS the background: it
+# disappears and the glyph left behind is a different shape — the seed rounds off into
+# an octagon, the heart loses the notch between its lobes. The dark menu gets a rim
+# light enough to survive it and still dark enough against the fills to read as an
+# outline. Same reasoning, same pair of colours as the menu glyphs beside these.
 OUTLINE = "1B2E14"
+OUTLINE_DARK = "5A6B4E"
 N = 12
 
 
@@ -65,7 +71,7 @@ def rgb(h):
     return int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
 
 
-for name, (art, fill) in ART.items():
+def draw(name, art, fill, outline, suffix):
     grid = art.strip("\n").split("\n")
     on = {(x, y) for y, row in enumerate(grid) for x, c in enumerate(row) if c == "#"}
     rows = []
@@ -77,9 +83,15 @@ for name, (art, fill) in ART.items():
             # Rim = any lit pixel with an empty orthogonal neighbour.
             rim = any((x + dx, y + dy) not in on
                       for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))
-            r, g, b = rgb(OUTLINE if rim else fill)
+            r, g, b = rgb(outline if rim else fill)
             rows.append(f"{x},{y}: ({r},{g},{b},255)")
     txt = f"# ImageMagick pixel enumeration: {N},{N},255,srgba\n" + "\n".join(rows) + "\n"
+    path = f"Assets/UI/need_{name}{suffix}.png"
     subprocess.run(["magick", "txt:-", "-filter", "Point", "-resize", "200%",
-                    f"PNG32:Assets/UI/need_{name}.png"], input=txt.encode(), check=True)
-    print(f"Assets/UI/need_{name}.png")
+                    f"PNG32:{path}"], input=txt.encode(), check=True)
+    print(path)
+
+
+for name, (art, fill) in ART.items():
+    draw(name, art, fill, OUTLINE, "")
+    draw(name, art, fill, OUTLINE_DARK, "_dark")
