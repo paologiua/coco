@@ -32,6 +32,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var hideItem: NSMenuItem!
     /// The three she can be asked for. Held so the menu can grey them itself.
     private var actionItems: [NSMenuItem] = []
+    /// Full strength and faded, for every menu glyph. Held because the menu turns its
+    /// own items off and has to fade their icons with them.
+    private var menuIcons: [String: (lit: NSImage, dim: NSImage)] = [:]
     private let particles = ParticleField()
     private let birthdayLetter = BirthdayLetter()
     private let hatching = Hatching()
@@ -201,6 +204,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         statusBlock = StatusView(icons: needIcons)
 
+        // The menu's own glyphs, at the 16 points a menu item draws an image at. Drawn
+        // on a 16 grid and shipped doubled, so a Retina menu lands one art pixel on
+        // exactly four of its own.
+        for glyph in ["feed", "play", "sleep", "hide", "show"] {
+            guard let url = Bundle.main.url(forResource: "menu_\(glyph)", withExtension: "png",
+                                            subdirectory: "UI"),
+                  let image = NSImage(contentsOf: url) else { continue }
+            image.isTemplate = false
+            image.size = NSSize(width: 16, height: 16)
+            menuIcons[glyph] = (image, faded(image))
+        }
+
         let menu = NSMenu()
         menu.delegate = self
         let blockItem = NSMenuItem()
@@ -212,12 +227,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // Swift method is not — it compiled, it was never called, and the items stayed
         // live. Setting them here is one line longer and cannot silently stop working.
         menu.autoenablesItems = false
-        actionItems = [action("Feed", #selector(feed)),
-                       action("Play", #selector(playWith)),
-                       action("Sleep", #selector(sleepNow))]
+        actionItems = [action("Feed", #selector(feed), icon: "feed"),
+                       action("Play", #selector(playWith), icon: "play"),
+                       action("Sleep", #selector(sleepNow), icon: "sleep")]
         actionItems.forEach(menu.addItem)
         menu.addItem(.separator())
-        hideItem = action("Hide Coco", #selector(toggleHidden))
+        hideItem = action("Hide Coco", #selector(toggleHidden), icon: "hide")
         menu.addItem(hideItem)
         menu.addItem(action("Settings…", #selector(openSettings)))
         menu.addItem(.separator())
@@ -230,10 +245,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
-    private func action(_ title: String, _ selector: Selector, key: String = "") -> NSMenuItem {
+    private func action(_ title: String, _ selector: Selector, key: String = "",
+                        icon: String? = nil) -> NSMenuItem {
         let item = NSMenuItem(title: title, action: selector, keyEquivalent: key)
         item.target = self
+        // Only the things she does carry a glyph. Settings and Quit are the app's, not
+        // hers, and giving those a pixel icon too would say they are the same kind of
+        // thing as feeding her.
+        if let icon { item.image = menuIcons[icon]?.lit }
         return item
+    }
+
+    /// A faded copy, for an item that is switched off.
+    ///
+    /// AppKit dims a TEMPLATE image on a disabled item by recolouring it, and these are
+    /// colour images on purpose — so the glyph stayed bright beside grey text, which
+    /// reads as an item that is still live.
+    private func faded(_ image: NSImage) -> NSImage {
+        let copy = NSImage(size: image.size, flipped: false) { rect in
+            NSGraphicsContext.current?.imageInterpolation = .none
+            image.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 0.3)
+            return true
+        }
+        copy.isTemplate = false
+        return copy
     }
 
     // MARK: - Menu
@@ -245,9 +280,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         statusBlock.moodLabel = describe(sim.mood)
         statusBlock.needsDisplay = true
         hideItem.title = sim.state.hidden ? "Show Coco" : "Hide Coco"
+        // The eye says which way the item goes: struck through to put her away, open to
+        // bring her back.
+        hideItem.image = menuIcons[sim.state.hidden ? "show" : "hide"]?.lit
         // Hidden she is not on screen; asleep she cannot react. Either way there is no
         // Coco to turn her head away, so the items say so instead.
-        actionItems.forEach { $0.isEnabled = sim.canBeAsked }
+        let live = sim.canBeAsked
+        for (item, glyph) in zip(actionItems, ["feed", "play", "sleep"]) {
+            item.isEnabled = live
+            item.image = live ? menuIcons[glyph]?.lit : menuIcons[glyph]?.dim
+        }
     }
 
     private func describe(_ mood: Mood) -> String {
