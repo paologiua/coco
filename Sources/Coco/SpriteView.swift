@@ -62,11 +62,15 @@ final class SpriteView: NSView {
         for particle in particles {
             let rows = ParticleField.matrix(for: particle.kind)
             particle.tint.withAlphaComponent(particle.fade).setFill()
+            // One cell of the matrix is `pip` points across, so the next one starts
+            // `pip` points along. Stepping by anything else stacks them: the cells were
+            // laid out a point apart while being drawn five points wide, so a Z came out
+            // as a solid square and the sleeping marks stopped reading as letters.
+            let pip = CGFloat(ParticleField.pip)
             for (row, line) in rows.enumerated() {
                 for (column, character) in line.enumerated() where character == "#" {
-                    let pip = CGFloat(ParticleField.pip)
-                    let rect = NSRect(x: (particle.position.x + Double(column)) * scale,
-                                      y: (particle.position.y + Double(row)) * scale,
+                    let rect = NSRect(x: particle.position.x * scale + CGFloat(column) * pip,
+                                      y: particle.position.y * scale + CGFloat(row) * pip,
                                       width: pip, height: pip)
                     ctx.fill(rect)
                 }

@@ -239,29 +239,37 @@ struct BehaviourTests {
     }
 
     @Test func corneredAgainstAnEdgeSheFleesPastTheHand() throws {
-        let sim = Simulation(state: .fresh(now: now))
-        let driver = try makeDriver(sim)
-        // Hard against the right edge, with the hand just inside her personal space to
-        // her left. "Away from the hand" is rightwards, where there is no room left:
-        // she arrives instantly, rests, is startled again, and flaps against the wall
-        // for as long as the hand stays there.
-        let wall = screen.maxX - Double(Canvas.width)
-        driver.moveTo(CGPoint(x: wall, y: screen.minY))
-        driver.stay(for: 30)
-        let hand = CGPoint(x: driver.bodyCentre.x - 80, y: driver.bodyCentre.y)
+        // Cornered, "away from the hand" is a move of a few points into the wall: she
+        // arrives at once, lands still inside your reach, is startled again, and beats
+        // her wings against the edge. The fix is that she goes PAST you instead, so
+        // that — her ending up on the far side of the hand — is what this asserts.
+        //
+        // It used to count ticks, which was the wrong measure twice over: it described
+        // the symptom rather than the fix, and once she began sometimes escaping on
+        // foot, which is slower than flying, the threshold started failing on the runs
+        // where she ran.
+        for trial in 0..<12 {
+            let sim = Simulation(state: .fresh(now: now))
+            let driver = try makeDriver(sim)
+            let wall = screen.maxX - Double(Canvas.width)
+            driver.moveTo(CGPoint(x: wall, y: screen.minY))
+            driver.stay(for: 30)
+            let hand = CGPoint(x: driver.bodyCentre.x - 80, y: driver.bodyCentre.y)
 
-        var ticksToEscape = 0
-        for i in 0..<400 {
-            driver.tick(dt: 0.1, now: now.addingTimeInterval(Double(i) * 0.1),
-                        cursor: hand, screen: screen)
-            if hypot(driver.bodyCentre.x - hand.x, driver.bodyCentre.y - hand.y)
-                > BehaviourDriver.personalSpace {
-                ticksToEscape = i
-                break
+            var escaped = false
+            for i in 0..<400 {
+                driver.tick(dt: 0.1, now: now.addingTimeInterval(Double(i) * 0.1),
+                            cursor: hand, screen: screen)
+                if hypot(driver.bodyCentre.x - hand.x, driver.bodyCentre.y - hand.y)
+                    > BehaviourDriver.personalSpace {
+                    escaped = true
+                    break
+                }
             }
+            #expect(escaped, "prova \(trial): non si e' mai liberata dalla mano")
+            #expect(driver.bodyCentre.x < hand.x,
+                    "prova \(trial): e' rimasta dal lato del muro invece di passare oltre la mano")
         }
-        #expect(ticksToEscape > 0, "never escaped at all")
-        #expect(ticksToEscape <= 15, "took \(ticksToEscape) ticks to get clear of the hand")
     }
 
     @Test func sleepFliesDownBeforeClosingEyes() throws {
