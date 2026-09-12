@@ -571,6 +571,24 @@ final class BehaviourDriver {
 
     func moveTo(_ point: CGPoint) { position = point }
 
+    /// Put her down so that her drawn pixels land exactly on `bird`, a box in screen
+    /// coordinates.
+    ///
+    /// The inverse of `displayPosition` and the stage geometry the view draws with:
+    /// her window is wider and taller than she is, and she sits neither in its middle
+    /// nor on its floor, so placing the WINDOW where something else drew her puts her
+    /// tens of points away from it. Used at the handover out of the hatching, where
+    /// anything but an exact match reads as a jump at the one moment she is being
+    /// watched closely.
+    func land(on bird: CGRect) {
+        // `drawnBounds` is measured from the floor of the canvas upwards, so `minY` is
+        // the empty band under her feet — which is the whole of what has to be undone
+        // to turn a point her feet are standing on into a window origin.
+        position = CGPoint(
+            x: bird.midX - sprites.idle.drawnCentre.x * scale,
+            y: bird.minY + Double(Canvas.floorMargin) - sprites.idle.drawnBounds.minY * scale)
+    }
+
     /// Let go, she leaves — she is a bird, not something you put down.
     ///
     /// She used to make straight for the floor directly under the hand, which with the

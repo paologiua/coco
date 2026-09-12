@@ -461,4 +461,65 @@ struct BehaviourTests {
         }
         #expect(game.passes == 3)
     }
+
+    // MARK: - Coming out of the egg
+
+    /// The birthday bounce lifts her window a few points, and these tests are about
+    /// points. Pinned off it rather than mocked, so they read the same in September.
+    func notHerBirthday() -> SavedState {
+        var state = SavedState.fresh(now: now)
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: now) ?? now
+        let parts = Calendar.current.dateComponents([.month, .day], from: tomorrow)
+        state.birthdayMonth = parts.month
+        state.birthdayDay = parts.day
+        return state
+    }
+
+    /// The handover out of the hatching. Her window is 208x168 and the hatch sheet is
+    /// 147x133, and she sits in a different place inside each, so handing over a window
+    /// corner put her 45 points to the right of the egg she had just climbed out of.
+    /// Landing is therefore expressed in drawn pixels, and this is the test that says so.
+    @Test func sheLandsWithHerDrawnPixelsOnTheBoxSheIsGiven() throws {
+        let sim = Simulation(state: notHerBirthday())
+        let driver = try makeDriver(sim)
+
+        // Where the last frame of the hatching drew her — nothing to do with a window.
+        let bird = CGRect(x: 700, y: 64, width: 92, height: 83)
+        driver.land(on: bird)
+
+        // Where her drawn pixels now sit on screen. The canvas is bottom-aligned in the
+        // taller stage, and `drawnBounds` is measured from its floor up, so the band
+        // under her feet adds straight onto the window origin.
+        let origin = driver.displayPosition
+        let box = driver.sprites.idle.drawnBounds
+        let landed = CGRect(x: origin.x + box.minX,
+                            y: origin.y + box.minY,
+                            width: box.width, height: box.height)
+
+        #expect(abs(landed.midX - bird.midX) <= 1)
+        #expect(abs(landed.minY - bird.minY) <= 1)
+    }
+
+    /// What is handed over is the bird, not the frame around her. Most of a hatch frame
+    /// is empty air, and measuring the frame is what made her jump.
+    @Test func theHandoverBoxIsTheDrawnBirdAndNotTheFrameAroundHer() throws {
+        let image = NSImage(size: NSSize(width: 147, height: 133))
+        image.lockFocus()
+        NSColor.green.setFill()
+        // Shaped like the last real frame: low in the frame and off to one side.
+        NSRect(x: 12, y: 4, width: 92, height: 83).fill()
+        image.unlockFocus()
+
+        let rect = Hatching.drawnRect(of: image, inPanelAt: CGPoint(x: 700, y: 60))
+        #expect(rect == CGRect(x: 712, y: 64, width: 92, height: 83))
+    }
+
+    /// No art, no measurement — but she still has to arrive somewhere sane rather than
+    /// at the origin of the screen.
+    @Test func aFrameWithNothingDrawnInItLandsHerWhereItWasRatherThanNowhere() throws {
+        let blank = NSImage(size: NSSize(width: 147, height: 133))
+        let rect = Hatching.drawnRect(of: blank, inPanelAt: CGPoint(x: 700, y: 60))
+        #expect(rect.origin == CGPoint(x: 700, y: 60))
+        #expect(rect.size == CGSize(width: 0, height: 0))
+    }
 }

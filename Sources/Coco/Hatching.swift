@@ -20,8 +20,12 @@ final class Hatching {
     private var frames: [NSImage] = []
     private var elapsed = 0.0
 
-    /// Called once she is out, with the point on screen her feet ended on.
-    var onHatched: ((CGPoint) -> Void)?
+    /// Called once she is out, with the box her drawn pixels occupy on screen.
+    ///
+    /// A box, not a corner. The hatch sheet is 147x133 and her canvas is 208x168, and
+    /// she sits in a different place inside each — so the only thing the two frames
+    /// share is where the BIRD is, and that is what has to be handed over.
+    var onHatched: ((CGRect) -> Void)?
 
     /// Put the egg in front of her. Deliberately has no timeout and cannot be dismissed
     /// by clicking away: everything else in the app can be ignored, but this is the only
@@ -88,14 +92,71 @@ final class Hatching {
     private func finish(on screen: NSRect) {
         timer?.invalidate()
         timer = nil
-        let origin = stage?.frame.origin
-            ?? NSPoint(x: screen.midX, y: screen.minY + Self.floorMargin)
-        stage?.orderOut(nil)
-        stage = nil
+
+        // Where the last frame left her, in screen coordinates. With no art there is
+        // no bird to measure, so she arrives at the floor of the screen instead.
+        let bird = (stage?.frame.origin).flatMap { origin in
+            frames.last.map { Self.drawnRect(of: $0, inPanelAt: origin) }
+        } ?? CGRect(x: screen.midX, y: screen.minY + Self.floorMargin,
+                    width: 0, height: 0)
+
+        // Her first, the egg second. Ordered the other way round there is a beat with
+        // neither on screen, and she blinks out of existence on the way in.
         notice?.orderOut(nil)
         notice = nil
+        onHatched?(bird)
+        stage?.orderOut(nil)
+        stage = nil
         frames = []
-        onHatched?(CGPoint(x: origin.x, y: origin.y))
+    }
+
+    /// The box the drawn pixels of `image` occupy on screen, given the panel origin it
+    /// is drawn in. The stage draws its frames at one point per pixel, so no scaling
+    /// comes into it.
+    ///
+    /// Read from the art rather than measured once and written down as a constant: the
+    /// sheet can be redrawn, and a number in the source would go quietly wrong the
+    /// first time it is.
+    static func drawnRect(of image: NSImage, inPanelAt origin: CGPoint) -> CGRect {
+        guard let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
+            return CGRect(origin: origin, size: .zero)
+        }
+        let w = cg.width, h = cg.height
+        var raw = [UInt8](repeating: 0, count: w * h * 4)
+        var minX = w, maxX = -1, minY = h, maxY = -1
+
+        // The pointer CGContext is given must not outlive this closure.
+        raw.withUnsafeMutableBytes { buffer in
+            guard let ctx = CGContext(data: buffer.baseAddress,
+                                      width: w, height: h,
+                                      bitsPerComponent: 8, bytesPerRow: w * 4,
+                                      space: CGColorSpaceCreateDeviceRGB(),
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+            else { return }
+            ctx.interpolationQuality = .none
+            ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+
+            // Row 0 of the buffer is the TOP of the image — measured, not assumed, and
+            // the reason this is not simply `origin.y + minY` below.
+            let bytes = buffer.bindMemory(to: UInt8.self)
+            for y in 0..<h {
+                for x in 0..<w where bytes[(y * w + x) * 4 + 3] > 127 {
+                    minX = min(minX, x); maxX = max(maxX, x)
+                    minY = min(minY, y); maxY = max(maxY, y)
+                }
+            }
+        }
+
+        guard maxX >= 0 else { return CGRect(origin: origin, size: .zero) }
+
+        // The scan counted pixels, top-down; the panel is measured in points, bottom-up.
+        // The scale is 1 for the sheet as it is drawn today and would silently stop
+        // being so the day a frame is redrawn at 2x.
+        let sx = image.size.width / Double(w), sy = image.size.height / Double(h)
+        return CGRect(x: origin.x + Double(minX) * sx,
+                      y: origin.y + Double(h - 1 - maxY) * sy,
+                      width: Double(maxX - minX + 1) * sx,
+                      height: Double(maxY - minY + 1) * sy)
     }
 
     private static func load(_ name: String) -> NSImage? {

@@ -130,11 +130,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard !hasHatched else { return }
         let screen = (panel.screen ?? NSScreen.main ?? NSScreen.screens[0]).visibleFrame
         panel.orderOut(nil)
-        hatching.onHatched = { [weak self] point in
+        hatching.onHatched = { [weak self] bird in
             guard let self else { return }
             // She takes over exactly where the animation left her standing.
-            self.driver.moveTo(point)
+            self.driver.land(on: bird)
             self.panel.setFrameOrigin(self.driver.displayPosition)
+            // Draw her into the panel BEFORE it is ordered in. The loop that would
+            // otherwise put the first frame there does not start until the line below,
+            // and a panel shown empty is a blink of nothing where she should be.
+            self.view.sprite = self.driver.frame
+            self.view.facingRight = self.driver.facingRight
+            self.view.display()
             self.sim.markFirstLaunchDone()
             self.store.save(self.sim.state)
             if !self.sim.state.hidden { self.panel.showEverywhere() }
