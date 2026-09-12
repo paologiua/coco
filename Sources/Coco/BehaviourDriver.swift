@@ -31,7 +31,7 @@ final class BehaviourDriver {
 
     private let sim: Simulation
     private let animator: Animator
-    private let sprites: SpriteSet
+    let sprites: SpriteSet
     private let canvasSize: CGSize
     /// Points per stage pixel — needed to find her body's centre, which is not the
     /// window's centre: the window is taller than she is, to leave room for particles.
@@ -133,6 +133,22 @@ final class BehaviourDriver {
         return CGPoint(x: position.x + x * scale,
                        y: position.y - Double(Canvas.floorMargin)
                           + (Double(Canvas.height) - centre.y) * scale)
+    }
+
+    /// How far her drawn body sits from where `bodyCentre` says she is, while flying.
+    ///
+    /// Flight is anchored on the HEAD, which is what makes take-off seamless: her head
+    /// stays put and her body swings around it as the wings beat. `bodyCentre` is taken
+    /// from the resting pose so it does not move when she lands, so in the air it is
+    /// telling a small lie — eight points on average — and anything aiming her body at
+    /// something small pays for it. The hoop is small.
+    ///
+    /// This corrects the average only. The frames themselves range over 36 points
+    /// between wings-up and wings-down, and that is the bird breathing rather than an
+    /// error to be flattened out.
+    var flightAimOffset: Double {
+        let mean = sprites.fly.reduce(0.0) { $0 + $1.drawnCentre.y } / Double(sprites.fly.count)
+        return (sprites.idle.drawnCentre.y - mean) * scale
     }
 
     /// Window positions that keep her DRAWING on screen, rather than her window.

@@ -111,6 +111,25 @@ struct BehaviourTests {
         #expect(scored, "non ha mai attraversato l'anello in 60 secondi")
     }
 
+    @Test func theFlightAimOffsetCentresHerDrawnBodyNotHerReportedOne() throws {
+        let sim = Simulation(state: .fresh(now: now))
+        let driver = try makeDriver(sim)
+
+        // `bodyCentre` is taken from the resting pose, so that it does not move when she
+        // lands. In the air her body is drawn somewhere slightly different, and aiming
+        // the reported point at a small ring put her drawn body off-centre in it. The
+        // offset has to be exactly the gap between the two.
+        let reported = driver.bodyCentre.y
+        let visible = driver.sprites.fly.map { frame in
+            driver.position.y - Double(Canvas.floorMargin)
+                + (Double(Canvas.height) - frame.drawnCentre.y)
+        }
+        let mean = visible.reduce(0, +) / Double(visible.count)
+
+        #expect(abs((reported + driver.flightAimOffset) - mean) < 1,
+                "correzione \(driver.flightAimOffset) contro uno scarto reale di \(mean - reported)")
+    }
+
     @Test func theHoopIsPlayableHighOnTheScreen() throws {
         // Her window is 209 points tall and she fills 82 of them, so clamping the
         // WINDOW to the screen walled her body out of the top 168 points of it. Held up

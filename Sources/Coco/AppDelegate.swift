@@ -320,7 +320,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             // units. Handing it Coco's scale — now 1 — made the opening it looked for
             // half the size of the one on screen, and she kept missing a ring she was
             // visibly flying through.
-            driver.interactionTarget = hoopGame.target(bird: driver.bodyCentre, hoop: mouse,
+            // Aim her drawn body at the ring rather than the point `bodyCentre` reports,
+            // which in flight sits a little below it. A constant, so arriving does not
+            // move the target — making it depend on whether she is flying was tried,
+            // and it shifted the target out from under her at the moment she landed.
+            let aim = CGPoint(x: mouse.x, y: mouse.y - driver.flightAimOffset)
+            driver.interactionTarget = hoopGame.target(bird: driver.bodyCentre, hoop: aim,
                                                        opening: Self.hoopOpening,
                                                        reach: driver.reachableCentreX(in: screen))
             interaction.passes = hoopGame.passes

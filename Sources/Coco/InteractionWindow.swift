@@ -5,6 +5,8 @@ import AppKit
 @MainActor
 final class InteractionWindow {
     enum Kind { case food, hoop }
+    /// Points reserved above and below the hoop for its counter.
+    static let counterPad: CGFloat = 22
     private var panel: TargetPanel?
     private var backPanel: TargetPanel?
     private var timer: Timer?
@@ -31,8 +33,14 @@ final class InteractionWindow {
         let pixels = image?.representations.first.map {
             CGSize(width: $0.pixelsWide, height: $0.pixelsHigh)
         } ?? CGSize(width: 24, height: 24)
-        let size = CGSize(width: pixels.width * CGFloat(scale),
-                          height: pixels.height * CGFloat(scale))
+        let drawn = CGSize(width: pixels.width * CGFloat(scale),
+                           height: pixels.height * CGFloat(scale))
+        // Room under the ring for the counter, added top AND bottom so the ring stays
+        // centred on the pointer. The old asset carried enough transparent padding to
+        // hold the counter by accident; this one is trimmed to the drawing, so the
+        // count landed on the ring itself.
+        let pad = kind == .hoop ? Self.counterPad : 0
+        let size = CGSize(width: drawn.width, height: drawn.height + pad * 2)
 
         if kind == .food {
             panel = makePanel(size: size,
@@ -77,6 +85,7 @@ final class InteractionWindow {
         panel.isReleasedWhenClosed = false
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
         let view = TargetView(frame: panel.contentLayoutRect)
+        view.verticalPad = kind == .hoop ? InteractionWindow.counterPad : 0
         view.kind = kind
         view.passes = 0
         view.image = image
@@ -138,9 +147,15 @@ final class TargetView: NSView {
     var image: NSImage?
     var passes = 0
 
+    /// Points of empty panel above and below the drawing, so the counter has somewhere
+    /// to sit that is not on top of the ring.
+    var verticalPad: CGFloat = 0
+
     override func draw(_ dirtyRect: NSRect) {
         NSGraphicsContext.current?.imageInterpolation = .none
         NSGraphicsContext.current?.saveGraphicsState()
+        let art = NSRect(x: bounds.minX, y: bounds.minY + verticalPad,
+                         width: bounds.width, height: bounds.height - verticalPad * 2)
         switch layerToDraw {
         case .whole:
             break
@@ -151,7 +166,7 @@ final class TargetView: NSView {
             NSRect(x: bounds.midX, y: bounds.minY,
                    width: bounds.width / 2, height: bounds.height).clip()
         }
-        image?.draw(in: bounds, from: .zero, operation: .sourceOver, fraction: 1)
+        image?.draw(in: art, from: .zero, operation: .sourceOver, fraction: 1)
         NSGraphicsContext.current?.restoreGraphicsState()
         if showsCounter {
             let label = "\(passes) / 3"
@@ -160,7 +175,7 @@ final class TargetView: NSView {
                 .foregroundColor: NSColor.white,
                 .backgroundColor: NSColor.black.withAlphaComponent(0.8)
             ]
-            (label as NSString).draw(at: CGPoint(x: 6, y: 4), withAttributes: attributes)
+            (label as NSString).draw(at: CGPoint(x: 4, y: 2), withAttributes: attributes)
         }
     }
 }
