@@ -51,14 +51,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// grain than she is on purpose: at one point per pixel they would be specks.
     static let propScale = 3
     /// The hoop gets its own, because it is the one prop she has to fit THROUGH.
-    /// At this scale the ring stands 300 points tall with an opening 250 points high,
-    /// against a bird 119 tall at full wingspan.
+    /// At this scale the ring stands 180 points tall with an opening 150 points high,
+    /// against a bird 119 tall at full wingspan — room to pass and not much more, which
+    /// is the point. One step down again and the opening is shorter than she is.
     ///
     /// A whole number, and it has to be: the asset is stored at the grain the ring was
     /// actually drawn at, so showing it is a plain pixel-doubling. Storing it at some
     /// other grain means resampling by a fraction, and then some drawn blocks land on
     /// one point and their neighbours on two — which is what made it look ragged.
-    static let hoopScale = 5
+    static let hoopScale = 3
     /// Half the height of the hole through the ring, in points.
     ///
     /// Measured from `hoop.png`: the opening is 50 of the asset's 60 rows. This is what
