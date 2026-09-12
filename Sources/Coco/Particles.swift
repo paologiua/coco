@@ -29,7 +29,11 @@ final class ParticleField {
     /// Their drift and their speed are multiples of this, so raising it makes the marks
     /// bigger AND sends them further — which is what keeps a larger mark from simply
     /// hanging beside her head.
-    static let pip = 5
+    ///
+    /// Three, not five. Five was chosen while every mark was still collapsing into a
+    /// solid square nine points across; once the cells were spaced properly a Z came
+    /// out at 25 points, nearly three times the blob it replaced, and shouted.
+    static let pip = 3
 
     private var queue: [(kind: Kind, origin: CGPoint)] = []
     private var queueClock = 0.0
