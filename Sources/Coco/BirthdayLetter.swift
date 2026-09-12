@@ -171,6 +171,7 @@ final class BirthdayLetter {
         hideBackdrop()
         let panel = Self.makePanel(size: screen.size, on: screen, level: level)
         let view = ClickableImageView(frame: NSRect(origin: .zero, size: screen.size))
+        view.fill = NSColor(white: 0, alpha: 0.01)
         view.onClick = onClick
         panel.contentView = view
         panel.orderFrontRegardless()
@@ -242,6 +243,13 @@ final class BirthdayLetter {
 private final class ClickableImageView: NSView {
     var image: NSImage?
     var onClick: (() -> Void)?
+    /// Painted under the image, and the reason the click-catcher works at all.
+    ///
+    /// A window that draws nothing is transparent to the window server, which sends
+    /// clicks straight through it to whatever is underneath — so the sheet meant to
+    /// catch clicks outside the letter caught none. One hundredth of an alpha is
+    /// invisible and is enough to make the window solid to the mouse.
+    var fill: NSColor?
 
     /// Coco never activates, so without this AppKit swallows the first click whenever
     /// another application is frontmost — which is always.
@@ -249,6 +257,10 @@ private final class ClickableImageView: NSView {
     override func mouseDown(with event: NSEvent) { onClick?() }
 
     override func draw(_ dirtyRect: NSRect) {
+        if let fill {
+            fill.setFill()
+            dirtyRect.fill()
+        }
         NSGraphicsContext.current?.imageInterpolation = .none
         image?.draw(in: bounds, from: .zero, operation: .sourceOver, fraction: 1)
     }
