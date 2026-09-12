@@ -108,10 +108,13 @@ final class BehaviourDriver {
 
     var frame: Sprite {
         let base = animator.frame
-        // Asleep she wears nothing: a party hat on a sleeping bird reads as forgotten,
-        // not festive. A pose with no hatted twin simply goes bare-headed, which is
-        // what lets a new animation ship before its hat has been baked.
-        guard sim.isBirthday(on: Date()), behaviour != .sleeping,
+        // She keeps the hat on while she sleeps. It used to come off — a party hat on a
+        // sleeping bird can read as forgotten rather than festive — but on the one day
+        // it exists, taking it off means that dozing off ends the birthday early.
+        //
+        // A pose with no hatted twin simply goes bare-headed, which is what lets a new
+        // animation ship before its hat has been drawn.
+        guard sim.isBirthday(on: Date()),
               let hatted = sprites.hatted[base.name] else { return base }
         return hatted
     }
