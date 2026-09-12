@@ -1,0 +1,25 @@
+Generate an image and save the resulting PNG to this exact path:
+/private/tmp/claude-501/-Users-paologiua-Projects-coco/c7b16e4a-01d4-47f1-8622-5396428a91ae/scratchpad/frame0-big.png
+
+Do not write any other files and do not modify any repository.
+
+The attached image is ONE FRAME of an existing pixel-art animation. It is currently drawn on a grid of only about 85 by 85 pixels, and it has to be shown FULL SCREEN on a laptop, where that is far too coarse. Redraw this exact frame at much higher resolution.
+
+Use this prompt:
+
+---
+Pixel art illustration, 1024x1024: a single closed airmail envelope, centred, seen straight on, filling most of the frame.
+
+Reproduce the attached image EXACTLY — the same envelope, the same composition, the same proportions, the same colours, the same shapes. This is the same object redrawn with more pixels, not a new design. Specifically:
+
+- A cream envelope, seen flat and face-on, wider than it is tall.
+- A red-and-blue diagonal-striped airmail border running all the way around its outer edge.
+- The envelope's back flaps drawn as two long diagonal lines meeting at the centre, forming a wide V from the top corners and a matching V from the bottom corners.
+- A single red heart seal at the exact centre, where the flaps meet, with a darker red outline.
+- A clean dark brown outline around the whole envelope and around the heart.
+- The envelope sits very slightly rotated, almost but not quite square to the frame.
+
+CRITICAL — TRUE pixel art, but at FOUR TIMES the resolution of the attached image: the envelope is drawn on a grid of about 340 by 340 pixels, then scaled up so each "pixel" is a sharp square aligned to that grid. The result must still read as pixel art — visible square pixels, hard edges — but fine enough that the diagonal stripes and the curve of the heart are smooth rather than chunky. NO antialiasing, NO gradients, NO blur, NO glow, NO drop shadow.
+
+Background: solid flat magenta #FF00FF filling the whole canvas. No sparkles, no motion marks, no text, no shadow, no scenery.
+---

@@ -1,0 +1,50 @@
+Generate an image and save the resulting PNG to this exact path:
+/private/tmp/claude-501/-Users-paologiua-Projects-coco/c7b16e4a-01d4-47f1-8622-5396428a91ae/scratchpad/letter-big.png
+
+Do not write any other files and do not modify any repository.
+
+The attached image is an existing low-resolution frame that has to be redrawn much larger, because it will be shown FULL SCREEN on a laptop and the text is currently unreadable. Reproduce it faithfully at high resolution.
+
+Use this prompt:
+
+---
+Pixel art illustration, 1200x1560: an open letter on cream writing paper, seen straight on, filling almost the whole frame, with a red-and-blue diagonal-striped airmail border running all the way around its edge and a clean dark outline around the whole sheet. A small pixel-art red heart in the top-right corner of the paper, and another in the bottom-right corner. Two faint horizontal rule lines are NOT wanted — the paper is plain.
+
+The letter carries handwriting-style text in dark brown-black, left aligned, laid out in paragraphs exactly as given below. REPRODUCE THIS TEXT EXACTLY, character for character, including every accent and apostrophe. Do not translate it, do not correct it, do not paraphrase it, do not drop or add a single word. It is Italian:
+
+Ciao piupiuu,
+
+in questo giorno speciale ho affidato a te
+una missione importantissima: consegnarti
+questa letterina, nella speranza che riesca
+a recapitarti i miei auguri più grandi. In cambio,
+ho dovuto darle tutti i miei bicchieri migliori,
+rigorosamente pieni fino all'orlo di acqua
+del rubinetto.
+
+Per farti capire quanto sei speciale per me,
+volevo trovare un modo altrettanto speciale
+per augurarti buon compleanno.
+
+Sono davvero troppo felice di poter condividere
+con te tutti i momenti che passiamo insieme,
+fatti di risate, fusa e attimi spensierati.
+Ti auguro, anche quest'anno, di riuscire a realizzare
+ogni tuo sogno e di continuare a sfoggiare
+il tuo bellissimo sorriso, quello che riesce a togliermi
+il fiato ogni volta, come se fosse sempre la prima.
+
+Tanti auguri, amore mio.
+Ti amo più di ogni altra cosa al mondo.
+
+P.S. Spero che la lettera sia arrivata intatta
+e che non presenti troppi piccoli segni di becco.
+
+After the words "Tanti auguri, amore mio." on that same line, draw a small red pixel-art heart.
+
+The text must be large, evenly spaced and crisply legible — this is the whole purpose of the image. Keep generous margins between the text and the airmail border.
+
+Style: clean pixel-art lettering with hard edges, drawn at a resolution fine enough that every letter is sharp and easy to read. NO antialiasing on the artwork, NO gradients, NO blur, NO glow, NO drop shadow.
+
+Background outside the letter: solid flat magenta #FF00FF.
+---
