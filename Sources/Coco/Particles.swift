@@ -23,8 +23,13 @@ final class ParticleField {
     private(set) var particles: [Particle] = []
     private var zzzClock = 0.0
     /// Points per particle pixel. They are marks beside her, not part of her, so they
-    /// keep a coarser grain than she has.
-    static let pip = 3
+    /// keep a coarser grain than she has: at her own one point per pixel a heart would
+    /// be five points across and read as dirt on the screen.
+    ///
+    /// Their drift and their speed are multiples of this, so raising it makes the marks
+    /// bigger AND sends them further — which is what keeps a larger mark from simply
+    /// hanging beside her head.
+    static let pip = 5
 
     private var queue: [(kind: Kind, origin: CGPoint)] = []
     private var queueClock = 0.0
