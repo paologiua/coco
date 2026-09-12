@@ -71,7 +71,13 @@ final class BirthdayLetter {
         dismissInvitation()
         guard letter == nil else { return }
 
-        frames = (0..<19).compactMap { Self.load(String(format: "frame%02d", $0), in: "LetterAnim") }
+        // Seventeen of the nineteen drawn frames. The sheet ends on two that shrink the
+        // letter back down — measured, the drawing grows to 849 points and then falls
+        // away to 652 and 509 before the real letter arrives at 1293. Frame 16 is the
+        // peak, rays and all, and cutting straight from it into the letter is the
+        // difference between an arrival and a deflation. The two are kept in
+        // Assets/Letter/big, they are simply not played.
+        frames = (0..<17).compactMap { Self.load(String(format: "frame%02d", $0), in: "LetterAnim") }
         letterImage = Self.load("letter", in: "LetterAnim")
         guard !frames.isEmpty, let letterImage else { return }
 
