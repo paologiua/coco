@@ -195,9 +195,10 @@ final class BehaviourDriver {
         // air beside her.
         let head = box.maxX - box.width * 0.17
         let x = facingRight ? head : Double(Canvas.width) - head
-        // Just clear of the top of her head, so they rise off her rather than sitting
-        // on her.
-        return CGPoint(x: x, y: Double(Canvas.particleHeadroom) + box.minY - 4)
+        // Level with the top of her head, so the first mark half overlaps it and the
+        // rest climb away. Started clear of her, the lowest one hung in the air with a
+        // visible gap under it and the group read as unattached to the bird.
+        return CGPoint(x: x, y: Double(Canvas.particleHeadroom) + box.minY + 3)
     }
 
     /// The band her body centre can actually be moved into on this screen.
@@ -520,13 +521,25 @@ final class BehaviourDriver {
     // MARK: - Driven from outside
 
     func beginDrag() {
-        if sim.sleep != .awake { sim.wakeByDragging() }
+        // Deliberately does NOT wake her. This runs on mouse DOWN, before anyone knows
+        // whether the gesture is a drag or a click, and waking here meant a single
+        // click on a sleeping bird woke her, landed as petting, and threw hearts — so
+        // she could not be left asleep. `dragged(to:)` wakes her, once there is
+        // actually a drag.
         target = nil
         sleepLanding = nil
         sleepingPerch = nil
         startledUntil = .distantPast
         interactionTarget = nil
         enter(.dragged)
+    }
+
+    /// Moved by the hand. This is the first moment the gesture is known to be a drag
+    /// rather than a click, which is where waking her belongs: she can be dragged awake
+    /// — drowsily — but being poked once should leave her asleep.
+    func dragged(to point: CGPoint) {
+        if sim.sleep != .awake { sim.wakeByDragging() }
+        position = point
     }
 
     func moveTo(_ point: CGPoint) { position = point }

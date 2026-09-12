@@ -297,6 +297,19 @@ struct SimulationTests {
         _ = now
     }
 
+    @Test func pokingASleepingBirdLeavesHerAsleep() {
+        // Clicking her used to wake her before anyone knew whether the gesture was a
+        // drag: by the time the click finished she was awake, the petting landed, and
+        // hearts came out of a bird who was supposed to be asleep.
+        let s = sim { $0.sleep = .deep }
+        #expect(s.pet(at: Date()) == .refused(.asleep))
+        #expect(s.sleep == .deep)
+
+        // A drag is different, and still wakes her.
+        s.wakeByDragging()
+        #expect(s.sleep == .awake)
+    }
+
     // MARK: - Persistence
 
     @Test func stateSurvivesARoundTrip() throws {

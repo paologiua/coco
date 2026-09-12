@@ -549,7 +549,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let origin = NSPoint(x: mouse.x - offset.width, y: mouse.y - offset.height)
         // The driver thinks in feet, the window in frames, and they differ by the
         // margin kept below her for wingtips.
-        driver.moveTo(CGPoint(x: origin.x, y: origin.y + Double(Canvas.floorMargin)))
+        driver.dragged(to: CGPoint(x: origin.x, y: origin.y + Double(Canvas.floorMargin)))
         panel.setFrameOrigin(origin)
     }
 
