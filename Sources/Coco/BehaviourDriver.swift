@@ -135,20 +135,26 @@ final class BehaviourDriver {
                           + (Double(Canvas.height) - centre.y) * scale)
     }
 
-    /// How far her drawn body sits from where `bodyCentre` says she is, while flying.
+    /// How far below `bodyCentre` to aim so that her FLYING silhouette is centred.
     ///
-    /// Flight is anchored on the HEAD, which is what makes take-off seamless: her head
-    /// stays put and her body swings around it as the wings beat. `bodyCentre` is taken
-    /// from the resting pose so it does not move when she lands, so in the air it is
-    /// telling a small lie — eight points on average — and anything aiming her body at
-    /// something small pays for it. The hoop is small.
+    /// She only ever enters the hoop in flight, so the flying shape is the one to
+    /// centre, and this is the whole of it: the union of the four frames' drawn
+    /// bounds, which is the band of canvas her wingbeat sweeps.
     ///
-    /// This corrects the average only. The frames themselves range over 36 points
-    /// between wings-up and wings-down, and that is the bird breathing rather than an
-    /// error to be flattened out.
+    /// Averaging the four frames' own centres was the first attempt and is subtly
+    /// wrong. Those centres range over 36 points — but that is her WINGS opening and
+    /// closing, not her body moving: measured by the cheek, her head holds still to
+    /// within half a point across the whole beat. Centring a mean of bounding boxes
+    /// therefore aims at the wings. The union's centre lands within two points of that
+    /// motionless head, which is the reassurance that it is aiming at the bird.
     var flightAimOffset: Double {
-        let mean = sprites.fly.reduce(0.0) { $0 + $1.drawnCentre.y } / Double(sprites.fly.count)
-        return (sprites.idle.drawnCentre.y - mean) * scale
+        guard let first = sprites.fly.first else { return 0 }
+        var lo = first.drawnBounds.minY, hi = first.drawnBounds.maxY
+        for frame in sprites.fly.dropFirst() {
+            lo = min(lo, frame.drawnBounds.minY)
+            hi = max(hi, frame.drawnBounds.maxY)
+        }
+        return (sprites.idle.drawnCentre.y - (lo + hi) / 2) * scale
     }
 
     /// Window positions that keep her DRAWING on screen, rather than her window.

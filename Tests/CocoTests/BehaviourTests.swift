@@ -111,23 +111,35 @@ struct BehaviourTests {
         #expect(scored, "non ha mai attraversato l'anello in 60 secondi")
     }
 
-    @Test func theFlightAimOffsetCentresHerDrawnBodyNotHerReportedOne() throws {
+    @Test func theAimCentresHerFlyingSilhouetteRatherThanHerWings() throws {
         let sim = Simulation(state: .fresh(now: now))
         let driver = try makeDriver(sim)
 
-        // `bodyCentre` is taken from the resting pose, so that it does not move when she
-        // lands. In the air her body is drawn somewhere slightly different, and aiming
-        // the reported point at a small ring put her drawn body off-centre in it. The
-        // offset has to be exactly the gap between the two.
-        let reported = driver.bodyCentre.y
-        let visible = driver.sprites.fly.map { frame in
-            driver.position.y - Double(Canvas.floorMargin)
-                + (Double(Canvas.height) - frame.drawnCentre.y)
+        // She only ever enters the hoop in flight, so what has to sit in the middle of
+        // it is the band of canvas her wingbeat sweeps — the union of the flight
+        // frames, top of the highest to bottom of the lowest.
+        func screenY(canvas: Double) -> Double {
+            driver.position.y - Double(Canvas.floorMargin) + (Double(Canvas.height) - canvas)
         }
-        let mean = visible.reduce(0, +) / Double(visible.count)
+        let lo = driver.sprites.fly.map(\.drawnBounds.minY).min()!
+        let hi = driver.sprites.fly.map(\.drawnBounds.maxY).max()!
+        let silhouetteCentre = (screenY(canvas: lo) + screenY(canvas: hi)) / 2
 
-        #expect(abs((reported + driver.flightAimOffset) - mean) < 1,
-                "correzione \(driver.flightAimOffset) contro uno scarto reale di \(mean - reported)")
+        // Where the ring ends up, given the driver is asked to put bodyCentre one
+        // offset below it.
+        let ringCentre = driver.bodyCentre.y + driver.flightAimOffset
+
+        #expect(abs(ringCentre - silhouetteCentre) < 1,
+                "la sagoma di volo non e' centrata nell'anello: scarto \(silhouetteCentre - ringCentre)")
+
+        // And it is NOT the average of the frames' own centres, which is the mistake
+        // this replaced: those centres swing with the wings while the bird holds still.
+        let meanOfCentres = driver.sprites.fly.map(\.drawnCentre.y)
+            .reduce(0, +) / Double(driver.sprites.fly.count)
+        let wingAim = (driver.sprites.idle.drawnCentre.y - meanOfCentres) * 1
+        if abs(wingAim - driver.flightAimOffset) < 0.001 {
+            Issue.record("l'obiettivo coincide con la media dei centri: il fixture non distingue i due casi")
+        }
     }
 
     @Test func theHoopIsPlayableHighOnTheScreen() throws {
