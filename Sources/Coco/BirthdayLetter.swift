@@ -25,6 +25,8 @@ final class BirthdayLetter {
     private static let revealSeconds = 0.8
     /// Margin kept around the letter, so it does not touch the edges of the screen.
     private static let screenMargin = 24.0
+    /// The drawn frames actually played, in order. See `open` for what is left out.
+    private static let playedFrames = [0, 1, 2, 3, 4, 5, 6, 8, 9, 10, 11]
 
     private var invitation: NSPanel?
     private var letter: NSPanel?
@@ -107,7 +109,15 @@ final class BirthdayLetter {
         // grows to 849 points and then falls away to 509 before the real letter arrives
         // at 1293. Cutting at 11 ends on the letter coming out and hands straight over
         // to the letter itself. The rest are kept in Assets/Letter/big, simply unplayed.
-        frames = (0..<12).compactMap { Self.load(String(format: "frame%02d", $0), in: "LetterAnim") }
+        //
+        // Frame 07 is dropped from those twelve. The sheet inside the envelope sinks
+        // back down in it, between two frames that raise it, so the letter bobbed on
+        // its way out. It is the only backwards step in the run: 06 to 07 and 07 to 08
+        // move fewer pixels than any other pair, and cutting straight from 06 to 08
+        // moves fewer still than every remaining step — so nothing reads as missing.
+        frames = Self.playedFrames.compactMap {
+            Self.load(String(format: "frame%02d", $0), in: "LetterAnim")
+        }
         letterImage = Self.load("letter", in: "LetterAnim")
         guard !frames.isEmpty, let letterImage else { return }
 
